@@ -134,7 +134,7 @@ run_id: r1
 
 
 def test_publish_names_the_note_after_a_better_bibtex_citekey(run):
-    """Shuto 2026-09-30: note.md is hard to link to in Obsidian; name it like
+    """User feedback (2026-09-30): note.md is hard to link to in Obsidian; name it like
     the Lit notes made from Zotero (=citekey=.md)."""
     (run / "draft" / "note.md").write_text(ONIMARU)
     approved = digest(run)
@@ -212,7 +212,7 @@ def links_of(run):
 
 
 def test_the_note_links_to_the_markdown_paper_and_its_pdf(paper, run):
-    """Shuto 2026-09-30: the note named the source as an absolute path in code,
+    """User feedback (2026-09-30): the note named the source as an absolute path in code,
     which does not open in Obsidian (and a WSL path means nothing on Windows)."""
     links = links_of(run)
     assert links["mdpaper"] == "[[MDPapers/Sample 2024]]" and links["pdf"] is None
