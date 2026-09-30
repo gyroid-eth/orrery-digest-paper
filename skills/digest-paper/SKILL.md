@@ -76,6 +76,10 @@ Read `references/writing-review.md` first. Then:
    (as `zotero_item`), `library` (as `zotero_library`), `zotero_link` and
    `doi` into the front matter exactly; `check` refuses anything else, and
    `publish` then saves the note as a Lit note by itself.
+   Otherwise fill `authors` and `year` as printed in the paper: `publish`
+   names the note from them and the title, as Better BibTeX does
+   (`<output>/<citekey>-<sha8>/=<citekey>=.md`, e.g.
+   `=onimaruFintolimbTransitionReorganization2016=.md`).
    Write `RUN/draft/note.md` from `SKILL_DIR/assets/note-template.md` and
    `RUN/draft/evidence/figures.json` (asset → figure/panel → caption → where
    in the text). Links are relative: `![Fig. 1](assets/a003.png)`.

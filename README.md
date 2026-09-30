@@ -69,8 +69,14 @@ The agent works in this order:
 3. Drafts the note.
 4. Fixes the reviewer's findings.
 5. Gets the same draft confirmed.
-6. Saves `<save-to>/<title>-<hash>/note.md` with `assets/` and `evidence/`
-   (input record, figure map, review, result).
+6. Saves `<save-to>/<citekey>-<hash>/=<citekey>=.md` with `assets/` and
+   `evidence/` (input record, figure map, review, result).
+
+The citekey is made from the note's authors, title and year the way Zotero's
+Better BibTeX makes one by default (first author's family name, the first three
+significant words of the title, the year), so you link to the note as
+`[[=onimaruFintolimbTransitionReorganization2016=]]`. Without authors or a year
+that part is left out; a title with no Latin letters is used as it is.
 
 `review_status` means:
 - `checked`: the reviewer found the note consistent with the text and figures

@@ -17,6 +17,11 @@ refuses a note marked `review_status: checked` unless the latest review
 approved exactly the current digest, so an old review is never reused for a
 changed draft.
 
+publish names the note after a citekey, as Zotero's Better BibTeX does by
+default: <save-to>/<citekey>-<sha8>/=<citekey>=.md, so an Obsidian link to the
+paper is [[=citekey=]]. A run made from a Zotero record keeps its own layout,
+<lit>/<citekey>_<itemKey>/=<citekey>=.md, with the citekey from Zotero.
+
 publish never overwrites: an existing bundle stops it unless --revision is
 given, which writes <name>-r2, -r3, ... It writes into a staging folder first
 and renames it into place, so a half-written bundle never has the final name.
@@ -220,6 +225,85 @@ def safe_citekey(citekey: str) -> str:
     return text[:120]
 
 
+# Better BibTeX skips these words in the short title (its default formula is
+# auth.lower + shorttitle(3,3) + year).
+TITLE_SKIP = frozenset("""
+a ab aboard about above across after against al along amid among an and anti
+around as at before behind below beneath beside besides between beyond but by
+d da das de dei degli del dell della delle dello dem den der des despite die do
+down du during ein eine einem einen einer eines el en et except for from gli i
+il in inside into is l la las le les like lo los near nor of off on onto or over
+past per plus round save since so some sur than the through to toward towards
+un una unas une uno unos under underneath unlike until up upon versus via von
+while with within without yet zu zum""".split())
+INITIAL = re.compile(r"^(?:[A-Z]{1,3}|[A-Za-z]\.(?:-?[A-Za-z]\.)*)$")
+
+
+def ascii_fold(text: str) -> str:
+    return unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()
+
+
+def front_matter_list(text: str, key: str) -> list[str]:
+    """A front matter value that may be a string, a [flow, list] or a block
+    list of `- item` lines."""
+    if not text.startswith("---\n"):
+        return []
+    lines = text[4:text.find("\n---", 4)].splitlines()
+    for i, line in enumerate(lines):
+        if line.split(":", 1)[0].strip() != key or ":" not in line:
+            continue
+        value = line.split(":", 1)[1].strip()
+        if value:
+            return [value.strip("[]")]
+        items = []
+        for item in lines[i + 1:]:
+            if not item.lstrip().startswith("- "):
+                break
+            items.append(item.lstrip()[2:].strip().strip("'\""))
+        return items
+    return []
+
+
+def first_author_family(authors: list[str]) -> str:
+    """The first author's family name from authors as printed: "Koh Onimaru,
+    Luciano Marcon", "Onimaru K, Marcon L", "Onimaru, K." or "K. Onimaru".
+    Empty when there is no Latin-script name to use."""
+    text = " , ".join(authors)
+    first = re.split(r",|;|&|\band\b|\bet al\b", text)[0]
+    words = [w.strip("'\".") for w in first.split()]
+    words = [w for w in words if w and not INITIAL.match(w)]
+    name = ascii_fold(words[-1]) if words else ""
+    return re.sub(r"[^A-Za-z0-9-]", "", name).strip("-").lower()
+
+
+def short_title(title: str, count: int = 3) -> str:
+    words = []
+    for word in ascii_fold(title).split():
+        word = re.sub(r"[^A-Za-z0-9]", "", word)
+        if word and word.lower() not in TITLE_SKIP:
+            words.append(word[0].upper() + word[1:])
+        if len(words) == count:
+            break
+    return "".join(words)
+
+
+def make_citekey(fields: dict[str, str], note_text: str) -> str:
+    """A Better BibTeX style citekey from the note's front matter: the first
+    author's family name in lower case, the first three significant words of
+    the title, and the year (onimaruFintolimbTransitionReorganization2016).
+    Without an author or a year that part is left out; when nothing of it is
+    in Latin script (a Japanese title with no author), the title slug is used."""
+    # A template placeholder left in place ("<authors as printed>") is no value.
+    authors = [a for a in front_matter_list(note_text, "authors") if not re.fullmatch(r"<.*>", a.strip("'\""))]
+    year = re.search(r"\b(1[5-9]|20)\d\d\b", fields.get("year", ""))
+    key = (first_author_family(authors)
+           + short_title(fields.get("title", ""))
+           + (year.group(0) if year else ""))
+    if not re.search(r"[A-Za-z]", key):
+        key = slug(fields.get("title", "")) + (year.group(0) if year else "")
+    return safe_citekey(key)
+
+
 def cmd_publish(run: Path, revision: bool, layout: str = "auto") -> int:
     record = load_run(run)
     problems = check(run)
@@ -263,7 +347,13 @@ def cmd_publish(run: Path, revision: bool, layout: str = "auto") -> int:
         base = f"{cite}_{bib['item_key']}"
         note_name = f"={cite}=.md"
     else:
-        base = f"{slug(fields.get('title') or record['title_guess'])}-{record['source']['sha256'][:8]}"
+        if not fields.get("title") and record.get("title_guess"):
+            fields["title"] = record["title_guess"]
+        cite = make_citekey(fields, note_text)
+        # The source hash keeps two papers with the same key apart; the note
+        # file itself carries the key alone, so links do not depend on it.
+        base = f"{cite}-{record['source']['sha256'][:8]}"
+        note_name = f"={cite}=.md"
     name, n = base, 1
     while (output_dir / name).exists():
         if not revision:
@@ -318,7 +408,8 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("publish"); p.add_argument("run", type=Path); p.add_argument("--revision", action="store_true")
     p.add_argument("--layout", choices=("auto", "bundle", "lit"), default="auto",
                    help="auto (default): lit for runs made from a Zotero record, bundle otherwise; "
-                        "lit: <citekey>_<itemKey>/=<citekey>=.md")
+                        "bundle: <citekey>-<sha8>/=<citekey>=.md with the citekey made from the "
+                        "front matter; lit: <citekey>_<itemKey>/=<citekey>=.md")
     args = parser.parse_args(argv)
     run = args.run.expanduser()
     if args.command == "adopt":

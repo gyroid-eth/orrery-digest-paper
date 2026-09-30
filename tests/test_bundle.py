@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -104,8 +105,61 @@ def test_needs_review_can_be_published_and_is_never_overwritten(run):
     again = sh(SCRIPTS / "bundle.py", "publish", run)
     assert again.returncode == 1 and "not overwriting" in again.stderr
     revision = sh(SCRIPTS / "bundle.py", "publish", run, "--revision")
-    assert revision.returncode == 0 and "-r2/note.md" in revision.stdout
+    assert revision.returncode == 0 and "-r2/=MadeupPaperGels=.md" in revision.stdout
     assert not [p for p in (run.parent.parent).iterdir() if p.name.startswith(".staging-")]
+
+
+ONIMARU = """---
+title: "The fin-to-limb transition as the re-organization of a Turing pattern"
+authors: "Koh Onimaru, Luciano Marcon, Marco Musy, Mikiko Tanaka, James Sharpe"
+year: 2016
+language: en
+review_status: checked
+source_check: ocr-and-images
+writer: Writer-Curie
+reviewer: Reviewer-Bohr
+run_id: r1
+---
+
+![Fig. 1](assets/a001.png)
+"""
+
+
+def test_publish_names_the_note_after_a_better_bibtex_citekey(run):
+    """Shuto 2026-09-30: note.md is hard to link to in Obsidian; name it like
+    the Lit notes made from Zotero (=citekey=.md)."""
+    (run / "draft" / "note.md").write_text(ONIMARU)
+    approved = digest(run)
+    review(run, 1, "approved", approved)
+    published = sh(SCRIPTS / "bundle.py", "publish", run)
+    assert published.returncode == 0, published.stderr
+    note = Path(published.stdout.strip())
+    key = "onimaruFintolimbTransitionReorganization2016"
+    assert note.name == f"={key}=.md" and note.parent.name.startswith(f"{key}-")
+    assert not (note.parent / "note.md").exists()
+    assert note.read_text() == ONIMARU
+    # The rename leaves the approved content, and so the digest, unchanged.
+    result = json.loads((note.parent / "evidence" / "result.json").read_text())
+    assert result["note_file"] == note.name
+    assert result["draft_digest"] == result["reviewed_digest"] == approved
+
+
+@pytest.mark.parametrize("authors, title, year, key", [
+    ('"Onimaru K, Marcon L"', "Pattern", "2016", "onimaruPattern2016"),
+    ('"Onimaru, K., Marcon, L."', "Pattern", "2016", "onimaruPattern2016"),
+    ('"K. Onimaru and L. Marcon"', "Pattern", "2016", "onimaruPattern2016"),
+    ("\n  - Alexander Heyde\n  - L. Mahadevan", "Self-organized biotectonics of termite nests", "2021",
+     "heydeSelforganizedBiotectonicsTermite2021"),
+    ('"Rico-Guevara A"', "The Hummingbird Tongue Is a Fluid Trap", "2011", "rico-guevaraHummingbirdTongueFluid2011"),
+    ('"Müller J"', "The mechanics of non-Euclidean plates", "2010", "mullerMechanicsNonEuclideanPlates2010"),
+    ('"<authors as printed>"', "A made-up paper about gels", "<year>", "MadeupPaperGels"),
+    ('"鬼丸 洸"', "ひれから肢への転換", "2016", "ひれから肢への転換2016"),
+])
+def test_citekey_from_front_matter(authors, title, year, key):
+    sys.path.insert(0, str(SCRIPTS))
+    from bundle import front_matter, make_citekey
+    text = f"---\ntitle: {title}\nauthors: {authors}\nyear: {year}\n---\n"
+    assert make_citekey(front_matter(text), text) == key
 
 
 def test_setting_the_status_after_approval_needs_no_new_review(run):

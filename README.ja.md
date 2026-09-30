@@ -50,7 +50,9 @@ agent は次の順に進めます。
 3. 下書きを書く
 4. 指摘を受けて直す
 5. 同じ下書きの確認を受ける
-6. `保存先/<題名>-<hash>/note.md` と `assets/`、`evidence/`（入力の記録、図の対応、レビュー、結果）を保存する
+6. `保存先/<citekey>-<hash>/=<citekey>=.md` と `assets/`、`evidence/`（入力の記録、図の対応、レビュー、結果）を保存する
+
+citekey は、ノートの著者・題名・年から Zotero の Better BibTeX の既定と同じ形（第一著者の姓、題名の主要語 3 つ、年）で作ります。Obsidian からは `[[=onimaruFintolimbTransitionReorganization2016=]]` のようにリンクできます。著者や年が無ければその部分を省き、ラテン文字を含まない題名はそのまま使います。
 
 ノートの `review_status` の意味は次のとおりです。
 - `checked`: 確かめ役が、確認した点について本文と図に合っていると認めた
