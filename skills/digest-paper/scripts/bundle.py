@@ -397,9 +397,9 @@ def cmd_publish(run: Path, revision: bool, layout: str = "auto") -> int:
     evidence.mkdir(exist_ok=True)
     shutil.copy2(run / "input.json", evidence / "input.json")
     if review_path is not None:
-        # The latest review decides the status; every round is kept, since the
-        # substantive findings are usually in the earlier ones.
-        shutil.copy2(review_path, evidence / "review.md")
+        # Every round is kept, since the substantive findings are usually in
+        # the earlier ones; result.json names the latest, which decides the
+        # status.
         (evidence / "reviews").mkdir(exist_ok=True)
         for path in sorted((run / "review").glob("review-*.md")):
             shutil.copy2(path, evidence / "reviews" / path.name)
@@ -412,6 +412,7 @@ def cmd_publish(run: Path, revision: bool, layout: str = "auto") -> int:
         "draft_digest": digest,
         "reviewed_digest": review.get("draft_digest") if review else None,
         "review_verdict": review.get("verdict") if review else None,
+        "latest_review": f"reviews/{review_path.name}" if review_path else None,
         "note_sha256": sha256_bytes((run / "draft" / "note.md").read_bytes()),
         "source_sha256": record["source"]["sha256"],
     }

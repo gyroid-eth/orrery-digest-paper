@@ -98,7 +98,11 @@ def test_checked_needs_an_approval_of_exactly_this_draft(run):
     bundle = published.stdout.strip().rsplit("/", 1)[0]
     result = json.loads(open(f"{bundle}/evidence/result.json").read())
     assert result["review_status"] == "checked" and result["reviewed_digest"] == result["draft_digest"]
-    assert open(f"{bundle}/evidence/review.md").read().startswith("---\nreview: 3")
+    # Each round once, in reviews/; result.json names the latest.
+    assert result["latest_review"] == "reviews/review-3.md"
+    assert open(f"{bundle}/evidence/reviews/review-3.md").read().startswith("---\nreview: 3")
+    import os
+    assert sorted(os.listdir(f"{bundle}/evidence")) == ["figures.json", "input.json", "result.json", "reviews"]
 
 
 def test_needs_review_can_be_published_and_is_never_overwritten(run):

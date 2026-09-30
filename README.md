@@ -70,7 +70,8 @@ The agent works in this order:
 4. Fixes the reviewer's findings.
 5. Gets the same draft confirmed.
 6. Saves `<save-to>/<citekey>-<hash>/=<citekey>=.md` with `assets/` and
-   `evidence/` (input record, figure map, review, result).
+   `evidence/` (input record, figure map, every review round in `reviews/`,
+   result; `result.json` names the latest review).
 
 The citekey is made from the note's authors, title and year in the form of
 Zotero's Better BibTeX default with a capital first letter (first author's
