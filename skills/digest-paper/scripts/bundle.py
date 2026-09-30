@@ -226,7 +226,8 @@ def safe_citekey(citekey: str) -> str:
 
 
 # Better BibTeX skips these words in the short title (its default formula is
-# auth.lower + shorttitle(3,3) + year).
+# auth.lower + shorttitle(3,3) + year; ours capitalizes the author, as the
+# user's Lit notes do).
 TITLE_SKIP = frozenset("""
 a ab aboard about above across after against al along amid among an and anti
 around as at before behind below beneath beside besides between beyond but by
@@ -273,7 +274,8 @@ def first_author_family(authors: list[str]) -> str:
     words = [w.strip("'\".") for w in first.split()]
     words = [w for w in words if w and not INITIAL.match(w)]
     name = ascii_fold(words[-1]) if words else ""
-    return re.sub(r"[^A-Za-z0-9-]", "", name).strip("-").lower()
+    name = re.sub(r"[^A-Za-z0-9-]", "", name).strip("-").lower()
+    return name[:1].upper() + name[1:]
 
 
 def short_title(title: str, count: int = 3) -> str:
@@ -289,8 +291,8 @@ def short_title(title: str, count: int = 3) -> str:
 
 def make_citekey(fields: dict[str, str], note_text: str) -> str:
     """A Better BibTeX style citekey from the note's front matter: the first
-    author's family name in lower case, the first three significant words of
-    the title, and the year (onimaruFintolimbTransitionReorganization2016).
+    author's family name with a capital first letter, the first three
+    significant words of the title, and the year (OnimaruFintolimbTransitionReorganization2016).
     Without an author or a year that part is left out; when nothing of it is
     in Latin script (a Japanese title with no author), the title slug is used."""
     # A template placeholder left in place ("<authors as printed>") is no value.

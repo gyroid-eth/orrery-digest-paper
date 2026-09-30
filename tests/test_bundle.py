@@ -134,7 +134,7 @@ def test_publish_names_the_note_after_a_better_bibtex_citekey(run):
     published = sh(SCRIPTS / "bundle.py", "publish", run)
     assert published.returncode == 0, published.stderr
     note = Path(published.stdout.strip())
-    key = "onimaruFintolimbTransitionReorganization2016"
+    key = "OnimaruFintolimbTransitionReorganization2016"
     assert note.name == f"={key}=.md" and note.parent.name.startswith(f"{key}-")
     assert not (note.parent / "note.md").exists()
     assert note.read_text() == ONIMARU
@@ -145,13 +145,13 @@ def test_publish_names_the_note_after_a_better_bibtex_citekey(run):
 
 
 @pytest.mark.parametrize("authors, title, year, key", [
-    ('"Onimaru K, Marcon L"', "Pattern", "2016", "onimaruPattern2016"),
-    ('"Onimaru, K., Marcon, L."', "Pattern", "2016", "onimaruPattern2016"),
-    ('"K. Onimaru and L. Marcon"', "Pattern", "2016", "onimaruPattern2016"),
+    ('"Onimaru K, Marcon L"', "Pattern", "2016", "OnimaruPattern2016"),
+    ('"Onimaru, K., Marcon, L."', "Pattern", "2016", "OnimaruPattern2016"),
+    ('"K. Onimaru and L. Marcon"', "Pattern", "2016", "OnimaruPattern2016"),
     ("\n  - Alexander Heyde\n  - L. Mahadevan", "Self-organized biotectonics of termite nests", "2021",
-     "heydeSelforganizedBiotectonicsTermite2021"),
-    ('"Rico-Guevara A"', "The Hummingbird Tongue Is a Fluid Trap", "2011", "rico-guevaraHummingbirdTongueFluid2011"),
-    ('"Müller J"', "The mechanics of non-Euclidean plates", "2010", "mullerMechanicsNonEuclideanPlates2010"),
+     "HeydeSelforganizedBiotectonicsTermite2021"),
+    ('"Rico-Guevara A"', "The Hummingbird Tongue Is a Fluid Trap", "2011", "Rico-guevaraHummingbirdTongueFluid2011"),
+    ('"Müller J"', "The mechanics of non-Euclidean plates", "2010", "MullerMechanicsNonEuclideanPlates2010"),
     ('"<authors as printed>"', "A made-up paper about gels", "<year>", "MadeupPaperGels"),
     ('"鬼丸 洸"', "ひれから肢への転換", "2016", "ひれから肢への転換2016"),
 ])
