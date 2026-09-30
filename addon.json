@@ -1,0 +1,8 @@
+{
+  "name": "digest-paper",
+  "version": "0.1.0",
+  "description": "ORRERY add-on: a Claude writer and a Codex reviewer turn one pdf-mistral Markdown paper into a figure-backed note.",
+  "requires": {"orrery": "delegate skill and ORRERY Mail", "python": ">=3.9"},
+  "payload": ["skills/digest-paper"],
+  "license": "MIT"
+}
