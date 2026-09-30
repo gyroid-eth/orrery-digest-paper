@@ -26,7 +26,8 @@ Find your role before anything else:
 
 1. **Inputs.** Ask only for what is missing:
    - the Markdown file (pdf-mistral output) — required;
-   - the vault root, if it has `![[...]]` embeds, and any outside image
+   - the vault root — needed for `![[...]]` embeds and for the note's links
+     to the paper and its PDF; and any outside image
      folder its `file:///` links point to (e.g. the plugin's external images
      folder) — pass each as `--image-root`;
    - the output folder — required; never assume the current folder or the
@@ -81,6 +82,10 @@ Read `references/writing-review.md` first. Then:
    with a capital first letter
    (`<output>/<citekey>-<sha8>/=<citekey>=.md`, e.g.
    `=OnimaruFintolimbTransitionReorganization2016=.md`).
+   In the bibliography, copy `links.pdf` and `links.mdpaper` from
+   `RUN/input.json` as `- pdf: …` and `- mdpaper: …` lines exactly (`check`
+   requires them); they are vault-relative links that open in Obsidian.
+   Leave out a link that is null (`links.notes` says why).
    Write `RUN/draft/note.md` from `SKILL_DIR/assets/note-template.md` and
    `RUN/draft/evidence/figures.json` (asset → figure/panel → caption → where
    in the text). Links are relative: `![Fig. 1](assets/a003.png)`.

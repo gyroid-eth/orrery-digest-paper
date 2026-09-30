@@ -21,6 +21,8 @@ run_id: r1
 
 # A made-up paper about gels
 
+- mdpaper: [[MDPapers/Sample 2024]]
+
 ![Fig. 1](assets/a001.png)
 """
 
@@ -105,7 +107,7 @@ def test_needs_review_can_be_published_and_is_never_overwritten(run):
     again = sh(SCRIPTS / "bundle.py", "publish", run)
     assert again.returncode == 1 and "not overwriting" in again.stderr
     revision = sh(SCRIPTS / "bundle.py", "publish", run, "--revision")
-    assert revision.returncode == 0 and "-r2/=MadeupPaperGels=.md" in revision.stdout
+    assert revision.returncode == 0 and "-r2/=MadeupPaperGels-r2=.md" in revision.stdout
     assert not [p for p in (run.parent.parent).iterdir() if p.name.startswith(".staging-")]
 
 
@@ -120,6 +122,8 @@ writer: Writer-Curie
 reviewer: Reviewer-Bohr
 run_id: r1
 ---
+
+- mdpaper: [[MDPapers/Sample 2024]]
 
 ![Fig. 1](assets/a001.png)
 """
@@ -152,6 +156,9 @@ def test_publish_names_the_note_after_a_better_bibtex_citekey(run):
      "HeydeSelforganizedBiotectonicsTermite2021"),
     ('"Rico-Guevara A"', "The Hummingbird Tongue Is a Fluid Trap", "2011", "Rico-guevaraHummingbirdTongueFluid2011"),
     ('"Müller J"', "The mechanics of non-Euclidean plates", "2010", "MullerMechanicsNonEuclideanPlates2010"),
+    ('"K. LI"', "Gels", "2024", "LiGels2024"),
+    ('"LI, K., Yang, X."', "Gels", "2024", "LiGels2024"),
+    ('"LI K, YANG X"', "Gels", "2024", "LiGels2024"),
     ('"<authors as printed>"', "A made-up paper about gels", "<year>", "MadeupPaperGels"),
     ('"鬼丸 洸"', "ひれから肢への転換", "2016", "ひれから肢への転換2016"),
 ])
@@ -160,6 +167,80 @@ def test_citekey_from_front_matter(authors, title, year, key):
     from bundle import front_matter, make_citekey
     text = f"---\ntitle: {title}\nauthors: {authors}\nyear: {year}\n---\n"
     assert make_citekey(front_matter(text), text) == key
+
+
+def test_another_paper_with_the_same_key_gets_a_letter(paper, run):
+    """VioletBohr 2026-09-30: two papers with the same author, year and title
+    words, and a revision, all made the same note name in different folders,
+    and an Obsidian link to that name opened one of them at random."""
+    first = Path(sh(SCRIPTS / "bundle.py", "publish", run).stdout.strip())
+    other_md = paper["vault"] / "MDPapers" / "Other 2024.md"
+    other_md.write_text("# A made-up paper about gels\n\nA different text.\n")
+    other = prepare({**paper, "md": other_md}, "other")
+    (other / "draft" / "evidence" / "figures.json").write_text("[]")
+    (other / "draft" / "note.md").write_text(NOTE.format(status="needs-review").replace(
+        "- mdpaper: [[MDPapers/Sample 2024]]", "- mdpaper: [[MDPapers/Other 2024]]").replace(
+        "![Fig. 1](assets/a001.png)\n", ""))
+    second = sh(SCRIPTS / "bundle.py", "publish", other)
+    assert second.returncode == 0, second.stderr
+    names = [first.name, Path(second.stdout.strip()).name,
+             Path(sh(SCRIPTS / "bundle.py", "publish", run, "--revision").stdout.strip()).name]
+    assert names == ["=MadeupPaperGels=.md", "=MadeupPaperGelsa=.md", "=MadeupPaperGels-r2=.md"]
+
+
+def links_of(run):
+    return json.loads((run / "input.json").read_text())["links"]
+
+
+def test_the_note_links_to_the_markdown_paper_and_its_pdf(paper, run):
+    """Shuto 2026-09-30: the note named the source as an absolute path in code,
+    which does not open in Obsidian (and a WSL path means nothing on Windows)."""
+    links = links_of(run)
+    assert links["mdpaper"] == "[[MDPapers/Sample 2024]]" and links["pdf"] is None
+    assert "no PDF of the paper in the vault" in links["notes"][0]
+    note = run / "draft" / "note.md"
+    note.write_text(note.read_text().replace("- mdpaper: [[MDPapers/Sample 2024]]\n", ""))
+    out = sh(SCRIPTS / "bundle.py", "check", run).stdout
+    assert "add the line `- mdpaper: [[MDPapers/Sample 2024]]`" in out
+
+
+def prepare(paper, run_id, *extra):
+    result = sh(SCRIPTS / "prepare_input.py", "--input", paper["md"], "--output-dir", paper["out"],
+                "--vault-root", paper["vault"], "--run-id", run_id, *extra)
+    assert result.returncode == 0, result.stderr
+    return paper["runs"] / run_id
+
+
+def test_the_pdf_is_found_by_the_markdown_name_and_never_guessed(paper):
+    import unicodedata
+    pdf = paper["vault"] / "Zotero" / "Sample 2024.pdf"
+    pdf.parent.mkdir()
+    pdf.write_bytes(b"%PDF-1.4\n")
+    assert links_of(prepare(paper, "one"))["pdf"] == "[[Zotero/Sample 2024.pdf]]"
+    (paper["vault"] / "Other").mkdir()
+    (paper["vault"] / "Other" / "Sample 2024.pdf").write_bytes(b"%PDF-1.4\n")
+    two = links_of(prepare(paper, "two"))
+    assert two["pdf"] is None and "several PDFs match" in two["notes"][0]
+    # A Zotero record names its own PDF, which wins over the search by name.
+    bib = paper["vault"].parent / "bib.json"
+    bib.write_text(json.dumps({"source": "zotero", "citekey": "K", "item_key": "I", "attachments": [
+        {"is_pdf": True, "local_path": str(paper["vault"] / "Other" / "Sample 2024.pdf")}]}))
+    assert links_of(prepare(paper, "zotero", "--bib", bib))["pdf"] == "[[Other/Sample 2024.pdf]]"
+    # A macOS (NFD) name is linked in NFC, the spelling Obsidian writes.
+    nfd = paper["vault"] / "Zotero" / unicodedata.normalize("NFD", "ゲル.pdf")
+    md = paper["vault"] / "MDPapers" / unicodedata.normalize("NFD", "ゲル.md")
+    nfd.write_bytes(b"%PDF-1.4\n")
+    md.write_text("# ゲル\n")
+    links = links_of(prepare({**paper, "md": md}, "nfd"))
+    assert links["pdf"] == unicodedata.normalize("NFC", "[[Zotero/ゲル.pdf]]")
+    assert links["mdpaper"] == unicodedata.normalize("NFC", "[[MDPapers/ゲル]]")
+
+
+def test_a_name_a_wikilink_cannot_hold_becomes_a_markdown_link(paper):
+    md = paper["vault"] / "MDPapers" / "Gels #2 [review].md"
+    md.write_text("# Gels\n")
+    links = links_of(prepare({**paper, "md": md}, "odd"))
+    assert links["mdpaper"] == "[Gels #2 [review]](<MDPapers/Gels #2 [review].md>)"
 
 
 def test_setting_the_status_after_approval_needs_no_new_review(run):

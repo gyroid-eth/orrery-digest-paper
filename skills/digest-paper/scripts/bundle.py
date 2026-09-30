@@ -163,6 +163,14 @@ def check(run: Path) -> list[str]:
     assets = {p.name for p in (draft / "assets").glob("*") if p.is_file()}
     for name in sorted(assets - linked):
         problems.append(f"assets/{name} is not used in note.md (remove it or link it)")
+    # The links prepare_input.py made to the paper and its PDF (vault relative,
+    # so they open in Obsidian on any machine), copied exactly.
+    links = (json.loads((run / "input.json").read_text(encoding="utf-8")).get("links") or {}) \
+        if (run / "input.json").is_file() else {}
+    lines = {line.strip() for line in text.splitlines()}
+    for kind in ("pdf", "mdpaper"):
+        if links.get(kind) and f"- {kind}: {links[kind]}" not in lines:
+            problems.append(f"bibliography: add the line `- {kind}: {links[kind]}` (from input.json links)")
     bib_path = run / "bib.json"
     if bib_path.is_file():
         bib = json.loads(bib_path.read_text(encoding="utf-8"))
@@ -237,7 +245,8 @@ il in inside into is l la las le les like lo los near nor of off on onto or over
 past per plus round save since so some sur than the through to toward towards
 un una unas une uno unos under underneath unlike until up upon versus via von
 while with within without yet zu zum""".split())
-INITIAL = re.compile(r"^(?:[A-Z]{1,3}|[A-Za-z]\.(?:-?[A-Za-z]\.)*)$")
+DOTTED_INITIALS = re.compile(r"^[A-Za-z]\.(?:-?[A-Za-z]\.?)*$")
+CAPS_INITIALS = re.compile(r"^[A-Z]{1,3}$")
 
 
 def ascii_fold(text: str) -> str:
@@ -271,8 +280,15 @@ def first_author_family(authors: list[str]) -> str:
     Empty when there is no Latin-script name to use."""
     text = " , ".join(authors)
     first = re.split(r",|;|&|\band\b|\bet al\b", text)[0]
-    words = [w.strip("'\".") for w in first.split()]
-    words = [w for w in words if w and not INITIAL.match(w)]
+    words = [w.strip("'\"") for w in first.split()]
+    words = [w.rstrip(".") for w in words if w and not DOTTED_INITIALS.match(w)]
+    # "Onimaru K" drops the initials; "LI K" (PubMed order) and "K. LI" keep
+    # the short capitalized name, which is then the family name.
+    named = [w for w in words if not CAPS_INITIALS.match(w)]
+    if named:
+        words = named
+    elif len(words) > 1:
+        words = words[:1]
     name = ascii_fold(words[-1]) if words else ""
     name = re.sub(r"[^A-Za-z0-9-]", "", name).strip("-").lower()
     return name[:1].upper() + name[1:]
@@ -351,10 +367,17 @@ def cmd_publish(run: Path, revision: bool, layout: str = "auto") -> int:
     else:
         if not fields.get("title") and record.get("title_guess"):
             fields["title"] = record["title_guess"]
-        cite = make_citekey(fields, note_text)
-        # The source hash keeps two papers with the same key apart; the note
-        # file itself carries the key alone, so links do not depend on it.
-        base = f"{cite}-{record['source']['sha256'][:8]}"
+        key = make_citekey(fields, note_text)
+        sha8 = record["source"]["sha256"][:8]
+        # Obsidian links by file name, so another paper that already has this
+        # key in the output folder gets a letter, as Better BibTeX does
+        # (Li...2024, Li...2024a); the same paper keeps its key.
+        taken = {p.name for p in output_dir.glob("*/=*=.md")}
+        cite, letter = key, 0
+        while f"={cite}=.md" in taken and not (output_dir / f"{cite}-{sha8}").exists():
+            letter += 1
+            cite = key + ("abcdefghijklmnopqrstuvwxyz"[letter - 1] if letter <= 26 else f"-{letter}")
+        base = f"{cite}-{sha8}"
         note_name = f"={cite}=.md"
     name, n = base, 1
     while (output_dir / name).exists():
@@ -364,6 +387,10 @@ def cmd_publish(run: Path, revision: bool, layout: str = "auto") -> int:
             return 1
         n += 1
         name = f"{base}-r{n}"
+    if name != base:
+        # A revision is a separate note; give it its own name too, so a link
+        # to the key never picks one of the two versions at random.
+        note_name = note_name[:-len("=.md")] + f"-r{n}=.md"
     staging = output_dir / f".staging-{name}-{_dt.datetime.now():%H%M%S}"
     shutil.copytree(run / "draft", staging)
     evidence = staging / "evidence"

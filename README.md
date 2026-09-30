@@ -76,7 +76,16 @@ The citekey is made from the note's authors, title and year in the form of
 Zotero's Better BibTeX default with a capital first letter (first author's
 family name, the first three significant words of the title, the year), so
 you link to the note as `[[=OnimaruFintolimbTransitionReorganization2016=]]`. Without authors or a year
-that part is left out; a title with no Latin letters is used as it is.
+that part is left out; a title with no Latin letters is used as it is. Another
+paper that already has the same key in the save-to folder gets a letter
+(`...2016a`), and a `--revision` gets `-r2` in the note name too, so a link never
+has two notes to choose from.
+
+The bibliography links to the paper as Lit notes do, `- pdf: [[...]]` and
+`- mdpaper: [[...]]`, relative to the vault so they open in Obsidian on any
+machine. The PDF is the one with the Markdown's name in the vault (pdf-mistral
+names them alike), or the Zotero record's PDF; when none or several match, the
+line is left out and `evidence/input.json` says why. Links need the vault root.
 
 `review_status` means:
 - `checked`: the reviewer found the note consistent with the text and figures
