@@ -23,7 +23,8 @@ publish: false
 - 著者 / Authors:
 - 掲載 / Venue, year:
 - DOI:
-- 元資料 / Source: `<original Markdown path>`
+- pdf: <links.pdf from RUN/input.json, as is; leave the line out when it is null>
+- mdpaper: <links.mdpaper from RUN/input.json, as is; when it is null, write `- 元資料 / Source: `<original Markdown path>`` instead>
 
 ## 研究課題 / Question
 

@@ -72,7 +72,7 @@ Only if the user asked to **add** a paper that is not in Zotero yet, by DOI:
 5. The run decides the layout: the writer's usual `bundle.py publish RUN`
    saves `<LIT>/<citekey>_<itemKey>/=<citekey>=.md` because the run carries a
    Zotero record. Nobody publishes a second time. An existing note is never
-   overwritten; `--revision` makes a new folder.
+   overwritten; `--revision` makes a new folder and note (`-r2`).
 
 ## Rules
 

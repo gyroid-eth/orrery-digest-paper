@@ -339,6 +339,15 @@ def test_lit_publish_names_the_note_after_the_citekey(zotero, tmp_path):
     assert json.loads((note.parent / "evidence" / "result.json").read_text())["note_file"] == note.name
     again = sh(SCRIPTS / "bundle.py", "publish", run)
     assert again.returncode == 1 and "not overwriting" in again.stderr
+    # VioletBohr 2026-09-30: a note of the same name already in the folder (a
+    # Lit note directly in it, in any letter case) stops the publish; the
+    # Zotero citekey is never changed to get around it.
+    import shutil
+    shutil.rmtree(note.parent)
+    (lit / "=Nojoomi2018Bioinspired=.md").write_text("an older Lit note\n")
+    clash = sh(SCRIPTS / "bundle.py", "publish", run)
+    assert clash.returncode == 1 and "already in" in clash.stderr
+    assert sorted(p.name for p in lit.iterdir()) == ["=Nojoomi2018Bioinspired=.md"]
 
 
 def test_install_with_zotero_links_both_skills_and_default_does_not(tmp_path):

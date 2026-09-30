@@ -69,8 +69,31 @@ The agent works in this order:
 3. Drafts the note.
 4. Fixes the reviewer's findings.
 5. Gets the same draft confirmed.
-6. Saves `<save-to>/<title>-<hash>/note.md` with `assets/` and `evidence/`
-   (input record, figure map, review, result).
+6. Saves `<save-to>/<citekey>-<hash>/=<citekey>=.md` with `assets/` and
+   `evidence/` (input record, figure map, every review round in `reviews/`,
+   result; `result.json` names the latest review).
+
+The citekey is made from the note's authors, title and year in the form of
+Zotero's Better BibTeX default with a capital first letter (first author's
+family name, the first three significant words of the title, the year), so
+you link to the note as `[[=OnimaruFintolimbTransitionReorganization2016=]]`. Without authors or a year
+that part is left out; a title with no Latin letters is used as it is. Another
+paper that already has the same key in the save-to folder (directly in it or
+one folder down, in any letter case) gets a letter (`...2016a`), and a
+`--revision` gets `-r2` in the note name too. A Zotero note keeps Zotero's
+citekey, so publishing stops instead when that name is taken.
+
+Only the save-to folder is checked. A note of the same name elsewhere in the
+vault (another save-to folder, or your existing Lit notes, whose Zotero keys
+may differ in case) still makes `[[=Key=]]` ambiguous; search the vault for the
+name, and link with the folder (`[[folder/=Key=]]`, which Obsidian's link
+suggestions offer) when there are two.
+
+The bibliography links to the paper as Lit notes do, `- pdf: [[...]]` and
+`- mdpaper: [[...]]`, relative to the vault so they open in Obsidian on any
+machine. The PDF is the one with the Markdown's name in the vault (pdf-mistral
+names them alike), or the Zotero record's PDF; when none or several match, the
+line is left out and `evidence/input.json` says why. Links need the vault root.
 
 `review_status` means:
 - `checked`: the reviewer found the note consistent with the text and figures

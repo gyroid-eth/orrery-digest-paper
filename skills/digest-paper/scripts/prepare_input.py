@@ -220,6 +220,61 @@ def slug(text: str, limit: int = 60) -> str:
     return text[:limit].rstrip("-.") or "paper"
 
 
+WIKILINK_UNSAFE = re.compile(r"[\[\]|#^]")
+
+
+def vault_link(path: Path, vault_root: Path, drop_suffix: bool = False) -> str | None:
+    """An Obsidian link to a file in the vault, relative to its root in NFC (a
+    macOS vault and a Windows vault spell the same name alike). A name that a
+    wikilink cannot hold becomes a Markdown link."""
+    try:
+        rel = path.resolve().relative_to(vault_root.resolve())
+    except ValueError:
+        return None
+    rel_text = unicodedata.normalize("NFC", rel.as_posix())
+    if drop_suffix:
+        rel_text = rel_text[:-len(path.suffix)] if path.suffix else rel_text
+    if WIKILINK_UNSAFE.search(rel_text):
+        # A Markdown link target is a URL: "#" would start a fragment, so
+        # every character but the folder separator is percent-encoded.
+        target = urllib.parse.quote(rel_text + (path.suffix if drop_suffix else ""), safe="/")
+        label = re.sub(r"([\\\[\]])", r"\\\1", unicodedata.normalize("NFC", path.stem))
+        return f"[{label}]({target})"
+    return f"[[{rel_text}]]"
+
+
+def source_links(md: Path, vault_root: Path | None, bib: dict | None) -> dict:
+    """Links from the note to the Markdown paper and its PDF, for the
+    bibliography (`- pdf: [[...]]`, `- mdpaper: [[...]]`, as in Lit notes).
+    A link that cannot be made is null, with the reason."""
+    links = {"mdpaper": None, "pdf": None, "notes": []}
+    if vault_root is None:
+        links["notes"].append("no --vault-root: no links to the paper or its PDF")
+        return links
+    links["mdpaper"] = vault_link(md, vault_root, drop_suffix=True)
+    if links["mdpaper"] is None:
+        links["notes"].append("the Markdown is outside the vault: no mdpaper link")
+    pdfs: list[Path] = []
+    if bib and bib.get("source") == "zotero":
+        # The Zotero record names the PDF; prefer it over a search by name.
+        pdfs = [Path(a["local_path"]) for a in bib.get("attachments", [])
+                if a.get("is_pdf") and a.get("local_path") and Path(a["local_path"]).is_file()
+                and vault_link(Path(a["local_path"]), vault_root)]
+        same = [p for p in pdfs if unicodedata.normalize("NFC", p.stem) == unicodedata.normalize("NFC", md.stem)]
+        pdfs = same if len(pdfs) > 1 and same else pdfs
+    if not pdfs:
+        # pdf-mistral names the Markdown after the PDF.
+        pdfs = find_by_name(md.stem + ".pdf", [vault_root])
+    if len(pdfs) == 1:
+        links["pdf"] = vault_link(pdfs[0], vault_root)
+    elif pdfs:
+        names = ", ".join(sorted(unicodedata.normalize("NFC", p.relative_to(vault_root).as_posix()) for p in pdfs))
+        links["notes"].append(f"several PDFs match, so no pdf link: {names}")
+    else:
+        links["notes"].append(f"no PDF of the paper in the vault (looked for {md.stem}.pdf): no pdf link")
+    return links
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n", 1)[0])
     parser.add_argument("--input", required=True, type=Path)
@@ -325,12 +380,18 @@ def main(argv: list[str] | None = None) -> int:
         "output_dir": str(output_dir.resolve()),
         "summary": summary,
         "bib": {k: bib.get(k) for k in ("source", "citekey", "item_key", "library_id", "doi")} if bib else None,
+        "links": source_links(md, vault_root, bib),
         "images": images,
     }
     (run / "input.json").write_text(json.dumps(record, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     print(f"run: {run}")
     print(f"title: {title}")
+    for kind in ("pdf", "mdpaper"):
+        if record["links"][kind]:
+            print(f"{kind}: {record['links'][kind]}")
+    for note in record["links"]["notes"]:
+        print(f"links: {note}")
     print("images: {resolved} resolved ({unique_images} unique), {unresolved} unresolved, {remote} remote".format(**summary))
     for entry in images:
         if entry["status"] != "resolved":
