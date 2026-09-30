@@ -190,6 +190,11 @@ def test_another_paper_with_the_same_key_gets_a_letter(paper, run):
     names = [first.name, Path(second.stdout.strip()).name,
              Path(sh(SCRIPTS / "bundle.py", "publish", run, "--revision").stdout.strip()).name]
     assert names == ["=MadeupPaperGels=.md", "=MadeupPaperGelsa=.md", "=MadeupPaperGels-r2=.md"]
+    # A revision skips a number whose note name is already taken anywhere in
+    # the folder, not only one whose folder exists (VioletBohr 2026-09-30).
+    (paper["out"] / "=MadeupPaperGels-r3=.md").write_text("a note of that name\n")
+    r4 = sh(SCRIPTS / "bundle.py", "publish", run, "--revision")
+    assert r4.returncode == 0 and r4.stdout.strip().endswith("-r4/=MadeupPaperGels-r4=.md"), r4
 
 
 def test_a_lit_note_directly_in_the_folder_counts_as_taken(paper, run):

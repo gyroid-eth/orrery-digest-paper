@@ -389,18 +389,21 @@ def cmd_publish(run: Path, revision: bool, layout: str = "auto") -> int:
             cite = key + ("abcdefghijklmnopqrstuvwxyz"[letter - 1] if letter <= 26 else f"-{letter}")
         base = f"{cite}-{sha8}"
         note_name = f"={cite}=.md"
+    if (output_dir / base).exists() and not revision:
+        print(f"bundle: {output_dir / base} exists; not overwriting (use --revision for a new one)",
+              file=sys.stderr)
+        return 1
     name, n = base, 1
-    while (output_dir / name).exists():
-        if not revision:
-            print(f"bundle: {output_dir / name} exists; not overwriting (use --revision for a new one)",
-                  file=sys.stderr)
-            return 1
-        n += 1
-        name = f"{base}-r{n}"
-    if name != base:
+    if (output_dir / base).exists():
         # A revision is a separate note; give it its own name too, so a link
-        # to the key never picks one of the two versions at random.
-        note_name = note_name[:-len("=.md")] + f"-r{n}=.md"
+        # to the key never picks one of the two versions at random. Both the
+        # folder and the note name must be free.
+        stem = note_name[:-len("=.md")]
+        while True:
+            n += 1
+            name, note_name = f"{base}-r{n}", f"{stem}-r{n}=.md"
+            if not (output_dir / name).exists() and note_name.casefold() not in taken:
+                break
     staging = output_dir / f".staging-{name}-{_dt.datetime.now():%H%M%S}"
     shutil.copytree(run / "draft", staging)
     evidence = staging / "evidence"
