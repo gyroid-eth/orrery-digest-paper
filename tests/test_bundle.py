@@ -192,6 +192,16 @@ def test_another_paper_with_the_same_key_gets_a_letter(paper, run):
     assert names == ["=MadeupPaperGels=.md", "=MadeupPaperGelsa=.md", "=MadeupPaperGels-r2=.md"]
 
 
+def test_a_lit_note_directly_in_the_folder_counts_as_taken(paper, run):
+    """VioletBohr 2026-09-30: a Mac style Lit note (=Key=.md directly in the
+    save-to folder) was not seen, so a second note of that name was made."""
+    paper["out"].mkdir(exist_ok=True)
+    (paper["out"] / "=madeuppapergels=.md").write_text("an older Lit note\n")
+    published = sh(SCRIPTS / "bundle.py", "publish", run)
+    assert published.returncode == 0, published.stderr
+    assert Path(published.stdout.strip()).name == "=MadeupPaperGelsa=.md"
+
+
 def links_of(run):
     return json.loads((run / "input.json").read_text())["links"]
 
@@ -241,10 +251,22 @@ def test_the_pdf_is_found_by_the_markdown_name_and_never_guessed(paper):
 
 
 def test_a_name_a_wikilink_cannot_hold_becomes_a_markdown_link(paper):
-    md = paper["vault"] / "MDPapers" / "Gels #2 [review].md"
+    """VioletBohr 2026-09-30: the target was not URL-encoded, so "#" started a
+    fragment and the link pointed at "MDPapers/Gels "."""
+    import re
+    import urllib.parse
+    md = paper["vault"] / "MDPapers" / "Gels #2 [review] 100%.md"
     md.write_text("# Gels\n")
+    pdf = paper["vault"] / "Zotero" / "Gels #2 [review] 100%.pdf"
+    pdf.parent.mkdir()
+    pdf.write_bytes(b"%PDF-1.4\n")
     links = links_of(prepare({**paper, "md": md}, "odd"))
-    assert links["mdpaper"] == "[Gels #2 [review]](<MDPapers/Gels #2 [review].md>)"
+    for kind, path in (("mdpaper", md), ("pdf", pdf)):
+        label, target = re.fullmatch(r"\[((?:\\.|[^\]\\])*)\]\(([^()\s]+)\)", links[kind]).groups()
+        url = urllib.parse.urlsplit(target)
+        assert not url.fragment and not url.query and not url.scheme
+        assert paper["vault"] / urllib.parse.unquote(url.path) == path
+        assert re.sub(r"\\(.)", r"\1", label) == path.stem
 
 
 def test_setting_the_status_after_approval_needs_no_new_review(run):

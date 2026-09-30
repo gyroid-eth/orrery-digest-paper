@@ -78,9 +78,16 @@ Zotero's Better BibTeX default with a capital first letter (first author's
 family name, the first three significant words of the title, the year), so
 you link to the note as `[[=OnimaruFintolimbTransitionReorganization2016=]]`. Without authors or a year
 that part is left out; a title with no Latin letters is used as it is. Another
-paper that already has the same key in the save-to folder gets a letter
-(`...2016a`), and a `--revision` gets `-r2` in the note name too, so a link never
-has two notes to choose from.
+paper that already has the same key in the save-to folder (directly in it or
+one folder down, in any letter case) gets a letter (`...2016a`), and a
+`--revision` gets `-r2` in the note name too. A Zotero note keeps Zotero's
+citekey, so publishing stops instead when that name is taken.
+
+Only the save-to folder is checked. A note of the same name elsewhere in the
+vault (another save-to folder, or your existing Lit notes, whose Zotero keys
+may differ in case) still makes `[[=Key=]]` ambiguous; search the vault for the
+name, and link with the folder (`[[folder/=Key=]]`, which Obsidian's link
+suggestions offer) when there are two.
 
 The bibliography links to the paper as Lit notes do, `- pdf: [[...]]` and
 `- mdpaper: [[...]]`, relative to the vault so they open in Obsidian on any

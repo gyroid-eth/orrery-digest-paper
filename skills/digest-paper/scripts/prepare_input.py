@@ -235,8 +235,11 @@ def vault_link(path: Path, vault_root: Path, drop_suffix: bool = False) -> str |
     if drop_suffix:
         rel_text = rel_text[:-len(path.suffix)] if path.suffix else rel_text
     if WIKILINK_UNSAFE.search(rel_text):
-        target = rel_text + (path.suffix if drop_suffix else "")
-        return f"[{path.stem}](<{target}>)"
+        # A Markdown link target is a URL: "#" would start a fragment, so
+        # every character but the folder separator is percent-encoded.
+        target = urllib.parse.quote(rel_text + (path.suffix if drop_suffix else ""), safe="/")
+        label = re.sub(r"([\\\[\]])", r"\\\1", unicodedata.normalize("NFC", path.stem))
+        return f"[{label}]({target})"
     return f"[[{rel_text}]]"
 
 

@@ -348,6 +348,10 @@ def cmd_publish(run: Path, revision: bool, layout: str = "auto") -> int:
             return 1
 
     output_dir = Path(record["output_dir"])
+    # Obsidian links by file name, ignoring case; these are the note names
+    # already in the output folder, directly (Lit notes) or one level down.
+    taken = {unicodedata.normalize("NFC", p.name).casefold()
+             for pattern in ("=*=.md", "*/=*=.md") for p in output_dir.glob(pattern)}
     note_name = "note.md"
     if layout == "auto":
         # The run decides: a run made from a Zotero record is a Lit note, so
@@ -364,17 +368,23 @@ def cmd_publish(run: Path, revision: bool, layout: str = "auto") -> int:
         cite = safe_citekey(bib["citekey"])
         base = f"{cite}_{bib['item_key']}"
         note_name = f"={cite}=.md"
+        if note_name.casefold() in taken and not (output_dir / base).exists():
+            # The citekey is Zotero's own, so it is not changed; a second note
+            # of that name would leave [[=citekey=]] with two targets.
+            print(f"bundle: a note named {note_name} is already in {output_dir}; a second one would "
+                  "make links to it ambiguous. Publish to another folder, or rename or move the "
+                  "existing note first", file=sys.stderr)
+            return 1
     else:
         if not fields.get("title") and record.get("title_guess"):
             fields["title"] = record["title_guess"]
         key = make_citekey(fields, note_text)
         sha8 = record["source"]["sha256"][:8]
-        # Obsidian links by file name, so another paper that already has this
-        # key in the output folder gets a letter, as Better BibTeX does
-        # (Li...2024, Li...2024a); the same paper keeps its key.
-        taken = {p.name for p in output_dir.glob("*/=*=.md")}
+        # Another paper that already has this key in the output folder gets a
+        # letter, as Better BibTeX does (Li...2024, Li...2024a); the same paper
+        # keeps its key.
         cite, letter = key, 0
-        while f"={cite}=.md" in taken and not (output_dir / f"{cite}-{sha8}").exists():
+        while f"={cite}=.md".casefold() in taken and not (output_dir / f"{cite}-{sha8}").exists():
             letter += 1
             cite = key + ("abcdefghijklmnopqrstuvwxyz"[letter - 1] if letter <= 26 else f"-{letter}")
         base = f"{cite}-{sha8}"

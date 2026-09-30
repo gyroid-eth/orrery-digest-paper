@@ -52,7 +52,9 @@ agent は次の順に進めます。
 5. 同じ下書きの確認を受ける
 6. `保存先/<citekey>-<hash>/=<citekey>=.md` と `assets/`、`evidence/`（入力の記録、図の対応、`reviews/` に全回のレビュー、結果。最新の回は `result.json` の `latest_review`）を保存する
 
-citekey は、ノートの著者・題名・年から Zotero の Better BibTeX の既定の形を、先頭を大文字にして作ります（第一著者の姓、題名の主要語 3 つ、年）。Obsidian からは `[[=OnimaruFintolimbTransitionReorganization2016=]]` のようにリンクできます。著者や年が無ければその部分を省き、ラテン文字を含まない題名はそのまま使います。同じ保存先にすでに同じ citekey の別の論文があれば末尾に a, b … を付け（`...2016a`）、`--revision` の版はノート名にも `-r2` を付けます。同じ名前のノートが 2 つできてリンク先が曖昧になることはありません。
+citekey は、ノートの著者・題名・年から Zotero の Better BibTeX の既定の形を、先頭を大文字にして作ります（第一著者の姓、題名の主要語 3 つ、年）。Obsidian からは `[[=OnimaruFintolimbTransitionReorganization2016=]]` のようにリンクできます。著者や年が無ければその部分を省き、ラテン文字を含まない題名はそのまま使います。同じ保存先（その直下と 1 つ下のフォルダ。大文字・小文字は区別しない）にすでに同じ citekey の別の論文があれば末尾に a, b … を付け（`...2016a`）、`--revision` の版はノート名にも `-r2` を付けます。Zotero の版は Zotero の citekey を変えないので、その名前がすでにあるときは保存を止めます。
+
+調べるのは保存先の中だけです。vault の別の場所（別の保存先や、手元の Lit。Zotero の citekey とは大文字・小文字が違うこともあります）に同じ名前のノートがあると、`[[=Key=]]` のリンク先は曖昧になります。vault でその名前を検索し、2 つあればフォルダを含めて `[[フォルダ/=Key=]]` とリンクしてください（Obsidian のリンク候補から選べます）。
 
 書誌の節には、Lit のノートと同じく `- pdf: [[...]]` と `- mdpaper: [[...]]` を入れます。vault からの相対パスなので、どの機械の Obsidian でも開けます。PDF は、vault の中で Markdown と同じ名前のもの（pdf-mistral は同じ名前で書き出します）か、Zotero の記録にある PDF です。見つからないときや複数あるときはその行を省き、理由を `evidence/input.json` に残します。リンクを作るには vault のパスが必要です。
 
