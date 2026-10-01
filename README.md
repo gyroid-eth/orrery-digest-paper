@@ -26,6 +26,7 @@ URL. Japanese and English papers; the note language is `ja` (default) or `en`.
   panel as its own image, so a paper can have dozens.
   WSL / Ubuntu: `sudo apt install python3-pil` · macOS: `python3 -m pip install pillow`
 - Obsidian with the pdf-mistral plugin, to convert papers
+- A Mistral API key for that plugin: sign in at [console.mistral.ai](https://console.mistral.ai/), open **API Keys**, and create a key. OCR is billed per page, so you may need to turn on billing first (setting a monthly limit is a good idea). Keep the key in the plugin's settings only
 
 ## Install
 

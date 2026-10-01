@@ -18,6 +18,7 @@ Obsidian の **pdf-mistral** plugin で Markdown にした論文を 1 本渡す�
 - Pillow（推奨・任意）: 図を数枚の一覧画像で見渡せるようになります。無いと、書き手が画像を 1 枚ずつ開きます。pdf-mistral は図のパネルごとに画像を保存することが多く、数十枚になることがあります。
   WSL（Ubuntu）: `sudo apt install python3-pil`・macOS: `python3 -m pip install pillow`
 - Obsidian と pdf-mistral の plugin（論文を Markdown にするため）
+- その plugin に入れる Mistral の API キー: [console.mistral.ai](https://console.mistral.ai/) にログインし、**API Keys** でキーを作ります。OCR はページ数に応じた従量課金なので、先に支払いの設定が要ることがあります（月の上限を決めておくと安心です）。キーは plugin の設定の中だけに置きます
 
 ## install
 
