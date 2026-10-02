@@ -189,7 +189,7 @@ def check(run: Path) -> list[str]:
         if fields.get("source_converter") != converter:
             problems.append(f"front matter: `source_converter` must be {converter!r} (the paper was "
                             "converted on this machine, not by pdf-mistral)")
-        if not re.search(rf"Conversion:\s*{re.escape(converter)}\b", text):
+        if not re.search(rf"(?m)^- (?:変換 / )?Conversion:\s*{re.escape(converter)}\b", body_of(text)):
             problems.append(f"add the line `- 変換 / Conversion: {converter} ...` (see SKILL.md, Writer step 4)")
     bib_path = run / "bib.json"
     if bib_path.is_file():

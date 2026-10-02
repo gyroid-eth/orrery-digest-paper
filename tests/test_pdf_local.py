@@ -14,12 +14,12 @@ pytest.importorskip("pypdfium2")
 pytest.importorskip("PIL")
 
 
-def make_pdf(path: Path, text: str | None, image: bool) -> Path:
+def make_pdf(path: Path, text: str | None, image: bool, rotate: int = 0) -> Path:
     """A one-page PDF: Helvetica text (a text layer) and/or a 2 x 2 inch raster
     image, so the tests need no real paper."""
     objects = ["<< /Type /Catalog /Pages 2 0 R >>",
                "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-               "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R "
+               f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Rotate {rotate} /Contents 4 0 R "
                "/Resources << /Font << /F1 5 0 R >> /XObject << /Im1 6 0 R >> >> >>"]
     content = ""
     if text:
@@ -124,3 +124,23 @@ def test_the_run_and_the_note_carry_the_local_conversion(tmp_path):
     assert published.returncode == 0, published.stderr
     result = json.loads((Path(published.stdout.strip()).parent / "evidence" / "result.json").read_text())
     assert result["source_converter"] == "local-pdfium"
+
+
+def test_a_figure_on_a_rotated_page_is_cut_out_not_blank(tmp_path):
+    """CheeryNewton (2026-10-02): on a /Rotate page the cut-out was white."""
+    vault = tmp_path / "vault"
+    pdf = make_pdf(vault / "Rotated.pdf", TEXT, image=True, rotate=90)
+    assert convert("--pdf", pdf, "--vault-root", vault).returncode == 0
+    from PIL import Image
+    with Image.open(vault / "20_MDPapers" / "local-images" / "Rotated_p01-fig1.png") as figure:
+        rgb = figure.convert("RGB")
+        reds = sum(1 for r, g, b in rgb.getdata() if r > 150 and b < 100)
+        assert reds > rgb.width * rgb.height * 0.5  # the red test image, not blank paper
+
+
+def test_a_conversion_line_only_in_the_front_matter_does_not_count(tmp_path):
+    sys.path.insert(0, str(SCRIPTS))
+    from bundle import body_of
+    import re
+    note = "---\nsource_converter: local-pdfium\n# - Conversion: local-pdfium\n---\n\nbody\n"
+    assert not re.search(r"(?m)^- (?:変換 / )?Conversion:\s*local-pdfium\b", body_of(note))

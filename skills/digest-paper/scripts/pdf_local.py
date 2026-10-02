@@ -215,10 +215,17 @@ def main(argv: list[str] | None = None) -> int:
     for index in range(len(pdf)):
         page = pdf[index]
         number = f"{index + 1:02d}" if len(pdf) < 100 else f"{index + 1:03d}"
+        # Object and character positions are in the unrotated page; work there
+        # and turn each cut-out afterwards (a /Rotate page otherwise crops
+        # the wrong part, often blank).
+        rotation = page.get_rotation()
+        if rotation:
+            page.set_rotation(0)
         textpage = page.get_textpage()
         found = figure_boxes(page, raw, textpage)
         boxes = [box for box, _ in found]
         pages.append({"page": page, "number": number, "text": page_text(page), "boxes": boxes,
+                      "rotation": rotation,
                       "captions": [caption for _, caption in found],
                       "page_image": images_dir / f"{stem}_p{number}.png",
                       "figures": [images_dir / f"{stem}_p{number}-fig{k + 1}.png" for k in range(len(boxes))]})
@@ -269,13 +276,19 @@ def main(argv: list[str] | None = None) -> int:
                                             box[2] + MARGIN_PT, box[3] + MARGIN_PT)
                 crop = (max(0, int(left * scale)), max(0, int((height_pt - top) * scale)),
                         min(image.width, int(right * scale) + 1), min(image.height, int((height_pt - bottom) * scale) + 1))
-                image.crop(crop).save(path)
+                cut = image.crop(crop)
+                if p["rotation"]:
+                    # /Rotate turns the page clockwise; PIL turns counterclockwise.
+                    cut = cut.rotate(-p["rotation"], expand=True)
+                cut.save(path)
                 out += [f"![[{vault_link(path, vault)}]]", ""]
                 if caption:
                     # The caption's first line again, right under its figure,
                     # so the figure can be matched to its number.
                     out += [caption.replace("[", "\\[").replace("]", "\\]"), ""]
                 figures += 1
+        if p["rotation"]:
+            page.set_rotation(p["rotation"])
         page.render(scale=PAGE_DPI / 72).to_pil().save(p["page_image"])
         out += [f"![[{vault_link(p['page_image'], vault)}]]", ""]
     md_path.write_text("\n".join(out).rstrip() + "\n", encoding="utf-8")
