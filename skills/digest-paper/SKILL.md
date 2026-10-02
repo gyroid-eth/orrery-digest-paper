@@ -182,6 +182,9 @@ your task says `same-vendor`. Then:
   in the vault. The only writes are the run folder `RUN` and the published
   bundle, a new folder in the output folder the user chose (even when that
   folder is inside the vault). Only the writer publishes.
+- `RUN` is outside any ORRERY project: writes there need no file reservation,
+  and a reservation tool will refuse its path. That refusal is expected; write
+  the file and go on.
 - If a write to `RUN` is refused (a sandbox), report the exact error to the
   user and stop that step; do not write the file somewhere else or hand it to
   the other agent to save for you.
