@@ -11,15 +11,19 @@ Markdown, and a small ORRERY agent team makes a reading note with figures:
 - The writer fixes them, the reviewer confirms the same draft, and the note is
   saved to the folder you chose, together with a record of what was checked.
 
+On a machine where only Claude or only Codex can run, two agents of that one
+kind take the two roles (see "Review pairing" below).
+
 This version accepts **pdf-mistral output only** (Markdown plus figure
 images). It does not take a PDF directly and never fetches a paper by DOI or
 URL. Japanese and English papers; the note language is `ja` (default) or `en`.
 
 ## Requirements
 
-- ORRERY (orrery-telemetry) installed, with Claude and Codex children working
-  (the shiritori check passes)
-- `claude` and `codex` CLIs, signed in
+- ORRERY (orrery-telemetry) installed, with children working (the shiritori
+  check passes)
+- the `claude` or the `codex` CLI, signed in. With both, the note is checked by
+  another company's model (recommended)
 - Python 3.9+
 - Pillow (recommended, optional): lets the writer survey all figures on a few
   overview sheets instead of opening every image; pdf-mistral often saves each
@@ -103,6 +107,28 @@ line is left out and `evidence/input.json` says why. Links need the vault root.
 - `blocked`: something could not be checked.
 
 `checked` is not a statement that the paper itself is right.
+
+### Review pairing
+
+The note's front matter (`review_pairing`), its last section ("Review
+pairing" line) and `evidence/result.json` say who wrote it and who checked it.
+
+| Agents available | Writer | Reviewer | `review_pairing` |
+|---|---|---|---|
+| Claude and Codex | Claude | Codex | `cross-vendor` |
+| Claude only | Claude | another Claude | `same-vendor` |
+| Codex only | Codex | another Codex | `same-vendor` |
+
+- With both available, asking for "Claude only" or "Codex only" uses that pair.
+- In a `same-vendor` run the reviewer is still a separate agent (its own
+  session), working through the same files and Mail; the writer never reviews
+  its own draft. `bundle.py` refuses a note whose writer and reviewer are the
+  same agent, and a `checked` note approved by anyone but its reviewer. If the
+  reviewer cannot be started, the run stops.
+- The difference: a `same-vendor` reviewer shares the writer's model habits.
+  Wording stronger than the paper's ("suggests" becoming "shows") and misread
+  figures are the kind of error two agents of one model tend to miss together.
+  `cross-vendor` is the more independent check.
 
 ## Windows (WSL2) setup for participants (draft)
 

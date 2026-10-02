@@ -15,13 +15,17 @@ language: en
 review_status: {status}
 source_check: ocr-and-images
 writer: Writer-Curie
+writer_program: claude
 reviewer: Reviewer-Bohr
+reviewer_program: codex
+review_pairing: cross-vendor
 run_id: r1
 ---
 
 # A made-up paper about gels
 
 - mdpaper: [[MDPapers/Sample 2024]]
+- 確かめの組 / Review pairing: cross-vendor — 書き手（Claude）と別の会社のモデル（Codex）が確かめた。
 
 ![Fig. 1](assets/a001.png)
 """
@@ -123,11 +127,15 @@ language: en
 review_status: checked
 source_check: ocr-and-images
 writer: Writer-Curie
+writer_program: claude
 reviewer: Reviewer-Bohr
+reviewer_program: codex
+review_pairing: cross-vendor
 run_id: r1
 ---
 
 - mdpaper: [[MDPapers/Sample 2024]]
+- 確かめの組 / Review pairing: cross-vendor — 書き手（Claude）と別の会社のモデル（Codex）が確かめた。
 
 ![Fig. 1](assets/a001.png)
 """
@@ -310,3 +318,55 @@ def test_every_adopted_figure_needs_a_row_in_figures_json(run):
     (run / "draft" / "evidence" / "figures.json").write_text("[]")
     out = sh(SCRIPTS / "bundle.py", "check", run).stdout
     assert "assets/a001.png has no row in figures.json" in out
+
+
+def same_vendor(text, program="claude"):
+    return (text.replace("reviewer_program: codex", f"reviewer_program: {program}")
+            .replace("writer_program: claude", f"writer_program: {program}")
+            .replace("review_pairing: cross-vendor", "review_pairing: same-vendor")
+            .replace("Review pairing: cross-vendor — 書き手（Claude）と別の会社のモデル（Codex）が確かめた。",
+                     "Review pairing: same-vendor — 書き手と同じ Claude の別の agent が、別の session で確かめた。"
+                     "別の会社のモデルによる独立した確かめではない。"))
+
+
+@pytest.mark.parametrize("program", ["claude", "codex"])
+def test_a_same_vendor_note_is_published_and_says_so(run, program):
+    """Shuto 2026-10-02: digest-paper must also run with only Claude or only
+    Codex; the note then records that one kind of agent wrote and checked it."""
+    note = run / "draft" / "note.md"
+    note.write_text(same_vendor(NOTE.format(status="checked"), program))
+    assert sh(SCRIPTS / "bundle.py", "check", run).stdout.strip() == "ok"
+    review(run, 1, "approved", digest(run))
+    published = sh(SCRIPTS / "bundle.py", "publish", run)
+    assert published.returncode == 0, published.stderr
+    result = json.loads((Path(published.stdout.strip()).parent / "evidence" / "result.json").read_text())
+    assert result["review_pairing"] == "same-vendor"
+    assert result["writer_program"] == result["reviewer_program"] == program
+    assert (result["writer"], result["reviewer"]) == ("Writer-Curie", "Reviewer-Bohr")
+
+
+@pytest.mark.parametrize("edit, problem", [
+    (lambda t: t.replace("review_pairing: cross-vendor", "review_pairing: same-vendor"),
+     "review_pairing must be cross-vendor"),
+    (lambda t: same_vendor(t).replace("review_pairing: same-vendor", "review_pairing: cross-vendor"),
+     "review_pairing must be same-vendor"),
+    (lambda t: t.replace("reviewer_program: codex", "reviewer_program: gemini"), "reviewer_program must be one of"),
+    (lambda t: t.replace("review_pairing: cross-vendor", "review_pairing: solo"), "review_pairing must be one of"),
+    (lambda t: t.replace("- 確かめの組 / Review pairing: cross-vendor", "- 確かめの組"), "Review pairing: cross-vendor"),
+    (lambda t: t.replace("reviewer: Reviewer-Bohr", "reviewer: writer-curie"), "writer and reviewer are the same agent"),
+])
+def test_the_note_must_say_truthfully_who_wrote_and_checked_it(run, edit, problem):
+    (run / "draft" / "note.md").write_text(edit(NOTE.format(status="needs-review")))
+    result = sh(SCRIPTS / "bundle.py", "check", run)
+    assert result.returncode == 1 and problem in result.stdout, result.stdout
+
+
+def test_checked_needs_the_review_of_the_named_reviewer(run):
+    """An approval written by anyone else (the writer reviewing itself, or a
+    third agent) does not make the note checked."""
+    note = run / "draft" / "note.md"
+    note.write_text(NOTE.format(status="checked"))
+    (run / "review" / "review-1.md").write_text(
+        f"---\nreview: 1\ndraft_digest: {digest(run)}\nverdict: approved\nreviewer: Writer-Curie\n---\n")
+    refused = sh(SCRIPTS / "bundle.py", "publish", run)
+    assert refused.returncode == 1 and "not by the note's reviewer Reviewer-Bohr" in refused.stderr

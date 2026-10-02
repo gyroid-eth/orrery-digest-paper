@@ -8,7 +8,12 @@ language: ja
 review_status: needs-review
 source_check: ocr-and-images
 writer: <writer name>
+writer_program: <claude | codex>
+writer_model: "<writer's model, if known>"
 reviewer: <reviewer name>
+reviewer_program: <claude | codex>
+reviewer_model: "<reviewer's model, if known>"
+review_pairing: <cross-vendor | same-vendor>
 run_id: <run id>
 publish: false
 ---
@@ -52,3 +57,4 @@ publish: false
 
 - 確認できなかったこと、OCR の欠落が疑われる箇所、図番号未確認の図。
 - レビュー: <reviewer> が本文と図 <asset IDs> に照らして確認（`review_status` 参照）。
+- 確かめの組 / Review pairing: <review_pairing> — <the sentence for it in SKILL.md, Writer step 4>

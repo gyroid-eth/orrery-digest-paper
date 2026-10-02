@@ -15,7 +15,13 @@ the writer sets after the review), draft/evidence/figures.json and every file in
 draft/assets/. The reviewer names the digest it reviewed; publish
 refuses a note marked `review_status: checked` unless the latest review
 approved exactly the current digest, so an old review is never reused for a
-changed draft.
+changed draft, and was written by the note's reviewer, who is not its writer.
+
+The note records which agents made it: `writer_program` and `reviewer_program`
+(claude or codex) and `review_pairing`, which is `cross-vendor` when they
+differ and `same-vendor` when one kind of agent both wrote and checked the note
+(only Claude or only Codex was available). The note says so in a
+`Review pairing:` line, so a reader sees it without opening the front matter.
 
 publish names the note after a citekey, as Zotero's Better BibTeX does by
 default: <save-to>/<citekey>-<sha8>/=<citekey>=.md, so an Obsidian link to the
@@ -43,7 +49,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from mdlinks import image_links  # noqa: E402
 
 STATUSES = ("checked", "needs-review", "blocked")
-REQUIRED_KEYS = ("title", "language", "review_status", "source_check", "writer", "reviewer", "run_id")
+REQUIRED_KEYS = ("title", "language", "review_status", "source_check", "writer", "reviewer",
+                 "writer_program", "reviewer_program", "review_pairing", "run_id")
+PROGRAMS = ("claude", "codex")
+PAIRINGS = ("cross-vendor", "same-vendor")
 # A link target may contain balanced parentheses: the pdf-mistral plugin writes
 # file URIs with Node's pathToFileURL, which leaves "(" and ")" unencoded, so
 # "figure (control).png" must not end the link at its first ")".
@@ -137,6 +146,7 @@ def check(run: Path) -> list[str]:
             problems.append(f"front matter: `{key}` is missing")
     if fields.get("review_status") and fields["review_status"] not in STATUSES:
         problems.append(f"front matter: review_status must be one of {', '.join(STATUSES)}")
+    problems += pairing_problems(fields, text)
     linked = set()
     for kind, target, source in (link for line in text.splitlines() for link in image_links(line)):
         if kind == "wiki":
@@ -200,6 +210,32 @@ def check(run: Path) -> list[str]:
                 problems.append(f"assets/{name} has no row in figures.json")
         except (json.JSONDecodeError, AttributeError) as exc:
             problems.append(f"figures.json is not valid: {exc}")
+    return problems
+
+
+def pairing_problems(fields: dict[str, str], text: str) -> list[str]:
+    """The note must say truthfully who wrote it and who checked it: two
+    different agents, and a pairing that matches their programs."""
+    problems = []
+    writer, reviewer = fields.get("writer", ""), fields.get("reviewer", "")
+    if writer and reviewer and writer.casefold() == reviewer.casefold():
+        problems.append("front matter: writer and reviewer are the same agent; the reviewer must be "
+                        "another agent (a note is never checked by its own writer)")
+    programs = [fields.get(key, "") for key in ("writer_program", "reviewer_program")]
+    for key, value in zip(("writer_program", "reviewer_program"), programs):
+        if value and value not in PROGRAMS:
+            problems.append(f"front matter: {key} must be one of {', '.join(PROGRAMS)}")
+    pairing = fields.get("review_pairing", "")
+    if pairing and pairing not in PAIRINGS:
+        problems.append(f"front matter: review_pairing must be one of {', '.join(PAIRINGS)}")
+    elif pairing and all(p in PROGRAMS for p in programs):
+        expected = "same-vendor" if programs[0] == programs[1] else "cross-vendor"
+        if pairing != expected:
+            problems.append(f"front matter: review_pairing must be {expected} for a "
+                            f"{programs[0]} writer and a {programs[1]} reviewer")
+    if pairing in PAIRINGS and not re.search(rf"Review pairing:\s*{pairing}\b", text):
+        problems.append(f"add the line `- 確かめの組 / Review pairing: {pairing} ...` "
+                        "(see the template), so readers see who checked the note")
     return problems
 
 
@@ -346,6 +382,11 @@ def cmd_publish(run: Path, revision: bool, layout: str = "auto") -> int:
                   f"current draft ({digest[:12]}); ask the reviewer to confirm this draft "
                   "or mark the note needs-review", file=sys.stderr)
             return 1
+        if review.get("reviewer", "").casefold() != fields["reviewer"].casefold():
+            print(f"bundle: review_status is checked, but {review_path.name} was written by "
+                  f"{review.get('reviewer') or 'nobody named'}, not by the note's reviewer "
+                  f"{fields['reviewer']}", file=sys.stderr)
+            return 1
 
     output_dir = Path(record["output_dir"])
     # Obsidian links by file name, ignoring case; these are the note names
@@ -422,6 +463,11 @@ def cmd_publish(run: Path, revision: bool, layout: str = "auto") -> int:
         "published": _dt.datetime.now().astimezone().isoformat(timespec="seconds"),
         "review_status": status,
         "source_check": fields.get("source_check"),
+        "writer": fields["writer"],
+        "writer_program": fields["writer_program"],
+        "reviewer": fields["reviewer"],
+        "reviewer_program": fields["reviewer_program"],
+        "review_pairing": fields["review_pairing"],
         "draft_digest": digest,
         "reviewed_digest": review.get("draft_digest") if review else None,
         "review_verdict": review.get("verdict") if review else None,
@@ -429,6 +475,9 @@ def cmd_publish(run: Path, revision: bool, layout: str = "auto") -> int:
         "note_sha256": sha256_bytes((run / "draft" / "note.md").read_bytes()),
         "source_sha256": record["source"]["sha256"],
     }
+    for key in ("writer_model", "reviewer_model"):
+        if fields.get(key):
+            result[key] = fields[key]
     if (run / "bib.json").is_file():
         shutil.copy2(run / "bib.json", evidence / "bib.json")
     if note_name != "note.md":

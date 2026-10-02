@@ -8,12 +8,14 @@ Obsidian の **pdf-mistral** plugin で Markdown にした論文を 1 本渡す�
 - **Codex**（確かめ役）が、下書きを本文と実際の図に照らして確かめ、指摘を ORRERY Mail で書き手に直接送ります。
 - 書き手が直し、確かめ役が「同じ下書き」を確認したうえで、指定したフォルダにノートを保存します。何を確かめたかも一緒に残ります。
 
+Claude と Codex の片方しか使えない機械では、同じ種類の agent 2 体が書き手と確かめ役を分けて受け持ちます（下の「確かめの組」）。
+
 この版が受け付けるのは、**pdf-mistral の出力（Markdown と図）だけ**です。PDF を直接渡すことや、DOI や URL から論文を取ってくることはしません。日本語と英語の論文に対応し、ノートの言語は `ja`（既定）か `en` を選べます。
 
 ## 必要なもの
 
-- ORRERY（orrery-telemetry）を install し、しりとりで Claude と Codex の子を起動できること
-- `claude` と `codex` の CLI（ログイン済み）
+- ORRERY（orrery-telemetry）を install し、しりとりで子を起動できること
+- `claude` か `codex` の CLI（ログイン済み）。両方あれば、別の会社のモデルどうしで確かめます（推奨）
 - Python 3.9 以上
 - Pillow（推奨・任意）: 図を数枚の一覧画像で見渡せるようになります。無いと、書き手が画像を 1 枚ずつ開きます。pdf-mistral は図のパネルごとに画像を保存することが多く、数十枚になることがあります。
   WSL（Ubuntu）: `sudo apt install python3-pil`・macOS: `python3 -m pip install pillow`
@@ -65,6 +67,20 @@ citekey は、ノートの著者・題名・年から Zotero の Better BibTeX �
 - `blocked`: 確かめられなかった
 
 `checked` は、論文そのものが正しいという保証ではありません。
+
+### 確かめの組
+
+ノートの front matter の `review_pairing` と、末尾の「確かめの組 / Review pairing」の行に、誰が書いて誰が確かめたかが残ります（`evidence/result.json` にも）。
+
+| 使える agent | 書き手 | 確かめ役 | `review_pairing` |
+|---|---|---|---|
+| Claude と Codex | Claude | Codex | `cross-vendor` |
+| Claude だけ | Claude | 別の Claude | `same-vendor` |
+| Codex だけ | Codex | 別の Codex | `same-vendor` |
+
+- 両方あっても「Claude だけで」「Codex だけで」と頼めば、その組で動きます
+- `same-vendor` でも、確かめ役は書き手とは別の agent（別の session）で、同じファイルと Mail で確かめます。書き手が自分の下書きを確かめることはありません（`bundle.py` が、書き手と確かめ役が同じノートや、確かめ役以外の承認での `checked` を拒みます）。確かめ役を起動できなければ、そこで止まります
+- 違い: `same-vendor` の確かめ役は、書き手と同じモデルの癖を持ちます。原文より強い言い方（「示唆する」を「示した」にするなど）や図の読み違いは、同じモデルどうしだと見落としやすい種類の誤りです。`cross-vendor` の方が独立した確かめになります
 
 ## Windows（WSL2）で使う参加者の手順（下書き）
 
