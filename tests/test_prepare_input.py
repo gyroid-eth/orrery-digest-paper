@@ -144,3 +144,16 @@ def test_runs_dir_can_be_given_and_the_output_folder_is_created(paper, tmp_path)
     assert result.returncode == 0, result.stderr
     assert (tmp_path / "myruns" / "r1" / "input.json").is_file() and out.is_dir()
     assert not paper["runs"].exists()
+
+
+def test_an_output_folder_outside_the_vault_is_warned_about(paper):
+    """162nd (2026-10-01): a note that is not in the vault Obsidian has open
+    does not show up; say so before the run, instead of after."""
+    outside = run_prepare("--input", paper["md"], "--output-dir", paper["out"],
+                 "--vault-root", paper["vault"], "--run-id", "w1")
+    assert outside.returncode == 0 and "outside the vault" in outside.stdout
+    inside = run_prepare("--input", paper["md"], "--output-dir",
+                paper["vault"] / "Notes", "--vault-root", paper["vault"], "--run-id", "w2")
+    assert inside.returncode == 0 and "warning:" not in inside.stdout
+    novault = run_prepare("--input", paper["md"], "--output-dir", paper["out"], "--run-id", "w3")
+    assert "no --vault-root" in novault.stdout

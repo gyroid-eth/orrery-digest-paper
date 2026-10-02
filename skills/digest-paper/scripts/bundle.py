@@ -542,6 +542,14 @@ def cmd_publish(run: Path, revision: bool, layout: str = "auto") -> int:
     (evidence / "result.json").write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
     staging.rename(output_dir / name)
     print(output_dir / name / note_name)
+    vault = record.get("vault_root")
+    try:
+        inside = bool(vault) and (output_dir / name).resolve().relative_to(Path(vault).resolve()) is not None
+    except ValueError:
+        inside = False
+    if not inside:
+        print(f"bundle: warning: the note is not inside the vault ({vault or 'no vault given'}); "
+              "Obsidian will not show it there", file=sys.stderr)
     return 0
 
 

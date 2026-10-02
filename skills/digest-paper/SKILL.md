@@ -31,12 +31,17 @@ Find your role before anything else:
 
 1. **Inputs.** Ask only for what is missing:
    - the Markdown file (pdf-mistral output) — required;
-   - the vault root — needed for `![[...]]` embeds and for the note's links
-     to the paper and its PDF; and any outside image
+   - the vault root — the folder Obsidian has open, needed for `![[...]]`
+     embeds, the note's links and to be sure Obsidian shows the note. **Never
+     guess it** from your working folder, a vault name or an `obsidian://`
+     link: ask the user, and on WSL use the `/mnt/c/...` form of the folder
+     Windows Obsidian opened. And any outside image
      folder its `file:///` links point to (e.g. the plugin's external images
      folder) — pass each as `--image-root`;
-   - the output folder — required; never assume the current folder or the
-     vault is the destination;
+   - the output folder — required, inside the vault (e.g.
+     `<vault>/10_Reference/Notes`); never assume the current folder.
+     `prepare_input.py` and `publish` warn when it is outside the vault: stop
+     and ask the user then;
    - note language `ja` (default) or `en`.
    PDF input is not supported by this version: ask the user to convert it with
    the pdf-mistral plugin first. Never fetch a paper from the internet.
@@ -79,7 +84,8 @@ Find your role before anything else:
    as `checked`, and never take both roles yourself.
 5. Do your own role below (writer or reviewer) with the other agent's
    registered name as your counterpart.
-6. When the writer has published, tell the user the note path, the
+6. When the writer has published, tell the user the note path (the published
+   one in the vault, not the run folder, which is only work in progress), the
    `review_status`, what was checked, and anything left open.
 7. Keep the other agent until the user (or your own parent) has accepted the
    note: a revision needs the same reviewer to confirm the new draft, and a
