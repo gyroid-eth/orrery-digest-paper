@@ -25,7 +25,7 @@ run_id: r1
 # A made-up paper about gels
 
 - mdpaper: [[MDPapers/Sample 2024]]
-- 確かめの組 / Review pairing: cross-vendor — 書き手（Claude）と別の会社のモデル（Codex）が確かめた。
+- Review pairing: cross-vendor — written by Claude and checked by another company's model (Codex).
 
 ![Fig. 1](assets/a001.png)
 """
@@ -135,7 +135,7 @@ run_id: r1
 ---
 
 - mdpaper: [[MDPapers/Sample 2024]]
-- 確かめの組 / Review pairing: cross-vendor — 書き手（Claude）と別の会社のモデル（Codex）が確かめた。
+- Review pairing: cross-vendor — written by Claude and checked by another company's model (Codex).
 
 ![Fig. 1](assets/a001.png)
 """
@@ -324,9 +324,9 @@ def same_vendor(text, program="claude"):
     return (text.replace("reviewer_program: codex", f"reviewer_program: {program}")
             .replace("writer_program: claude", f"writer_program: {program}")
             .replace("review_pairing: cross-vendor", "review_pairing: same-vendor")
-            .replace("Review pairing: cross-vendor — 書き手（Claude）と別の会社のモデル（Codex）が確かめた。",
-                     "Review pairing: same-vendor — 書き手と同じ Claude の別の agent が、別の session で確かめた。"
-                     "別の会社のモデルによる独立した確かめではない。"))
+            .replace("- Review pairing: cross-vendor — written by Claude and checked by another company's model (Codex).",
+                     f"- Review pairing: same-vendor — checked by another {program.capitalize()} agent in a separate "
+                     "session, not independently by another company's model."))
 
 
 @pytest.mark.parametrize("program", ["claude", "codex"])
@@ -352,7 +352,18 @@ def test_a_same_vendor_note_is_published_and_says_so(run, program):
      "review_pairing must be same-vendor"),
     (lambda t: t.replace("reviewer_program: codex", "reviewer_program: gemini"), "reviewer_program must be one of"),
     (lambda t: t.replace("review_pairing: cross-vendor", "review_pairing: solo"), "review_pairing must be one of"),
-    (lambda t: t.replace("- 確かめの組 / Review pairing: cross-vendor", "- 確かめの組"), "Review pairing: cross-vendor"),
+    (lambda t: t.replace("- Review pairing: cross-vendor", "- Review"), "add this line, exactly"),
+    # The front matter says same-vendor but the body still claims another company checked it.
+    (lambda t: t.replace("writer_program: claude", "writer_program: codex").replace(
+        "review_pairing: cross-vendor", "review_pairing: same-vendor"), "add this line, exactly"),
+    # Only a comment in the front matter is not shown to the reader.
+    (lambda t: t.replace("- Review pairing: cross-vendor", "- Pairing").replace(
+        "run_id: r1\n", "run_id: r1\n# Review pairing: cross-vendor\n"), "add this line, exactly"),
+    (lambda t: t.replace("run_id: r1\n", "run_id: r1\nwriter_model: claude-opus-5-5\nreviewer_model: claude-opus-5-5\n"),
+     "reviewer_model 'claude-opus-5-5' is a claude model, but reviewer_program is codex"),
+    (lambda t: t.replace("run_id: r1\n", "run_id: r1\nreviewer_model: \"<model_raw from whois, or unknown>\"\n"),
+     "still the template's placeholder"),
+    (lambda t: t.replace("run_id: r1\n", "run_id: r1\nreviewer_model: llama-3\n"), "not a Claude or Codex model ID"),
     (lambda t: t.replace("reviewer: Reviewer-Bohr", "reviewer: writer-curie"), "writer and reviewer are the same agent"),
 ])
 def test_the_note_must_say_truthfully_who_wrote_and_checked_it(run, edit, problem):

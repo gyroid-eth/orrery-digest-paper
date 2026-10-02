@@ -213,9 +213,46 @@ def check(run: Path) -> list[str]:
     return problems
 
 
+PROGRAM_NAMES = {"claude": "Claude", "codex": "Codex"}
+
+
+def pairing_line(pairing: str, writer_program: str, reviewer_program: str, language: str) -> str:
+    """The one line the note body must carry, so a reader sees who checked the
+    note without opening the front matter. It is part of the reviewed draft."""
+    w, r = PROGRAM_NAMES[writer_program], PROGRAM_NAMES[reviewer_program]
+    if language == "en":
+        if pairing == "cross-vendor":
+            return f"- Review pairing: cross-vendor — written by {w} and checked by another company's model ({r})."
+        return (f"- Review pairing: same-vendor — checked by another {w} agent in a separate session, "
+                "not independently by another company's model.")
+    if pairing == "cross-vendor":
+        return f"- 確かめの組 / Review pairing: cross-vendor — 書き手（{w}）と別の会社のモデル（{r}）が確かめた。"
+    return (f"- 確かめの組 / Review pairing: same-vendor — 書き手と同じ {w} の別の agent が、別の session で"
+            "確かめた。別の会社のモデルによる独立した確かめではない。")
+
+
+def model_vendor(model: str) -> str | None:
+    """claude or codex for a model ID we recognise, else None."""
+    name = model.strip().lower()
+    if re.match(r"(claude|opus|sonnet|haiku|fable)\b|claude-", name):
+        return "claude"
+    if re.match(r"(gpt|codex)|o\d", name):
+        return "codex"
+    return None
+
+
+def body_of(text: str) -> str:
+    if text.startswith("---\n"):
+        end = text.find("\n---", 4)
+        if end >= 0:
+            return text[end + 4:]
+    return text
+
+
 def pairing_problems(fields: dict[str, str], text: str) -> list[str]:
     """The note must say truthfully who wrote it and who checked it: two
-    different agents, and a pairing that matches their programs."""
+    different agents, a pairing and models that match their programs, and the
+    matching line in the body."""
     problems = []
     writer, reviewer = fields.get("writer", ""), fields.get("reviewer", "")
     if writer and reviewer and writer.casefold() == reviewer.casefold():
@@ -225,6 +262,21 @@ def pairing_problems(fields: dict[str, str], text: str) -> list[str]:
     for key, value in zip(("writer_program", "reviewer_program"), programs):
         if value and value not in PROGRAMS:
             problems.append(f"front matter: {key} must be one of {', '.join(PROGRAMS)}")
+    for role, program in zip(("writer", "reviewer"), programs):
+        model = fields.get(f"{role}_model", "")
+        if not model or model == "unknown":
+            continue
+        if re.fullmatch(r"<.*>", model):
+            problems.append(f"front matter: {role}_model is still the template's placeholder; "
+                            "write the model ID (whois model_raw) or `unknown`")
+            continue
+        vendor = model_vendor(model)
+        if vendor is None:
+            problems.append(f"front matter: {role}_model {model!r} is not a Claude or Codex model ID; "
+                            "write the ID from whois (model_raw) or `unknown`")
+        elif program in PROGRAMS and vendor != program:
+            problems.append(f"front matter: {role}_model {model!r} is a {vendor} model, "
+                            f"but {role}_program is {program}")
     pairing = fields.get("review_pairing", "")
     if pairing and pairing not in PAIRINGS:
         problems.append(f"front matter: review_pairing must be one of {', '.join(PAIRINGS)}")
@@ -233,9 +285,11 @@ def pairing_problems(fields: dict[str, str], text: str) -> list[str]:
         if pairing != expected:
             problems.append(f"front matter: review_pairing must be {expected} for a "
                             f"{programs[0]} writer and a {programs[1]} reviewer")
-    if pairing in PAIRINGS and not re.search(rf"Review pairing:\s*{pairing}\b", text):
-        problems.append(f"add the line `- 確かめの組 / Review pairing: {pairing} ...` "
-                        "(see the template), so readers see who checked the note")
+        else:
+            line = pairing_line(pairing, programs[0], programs[1], fields.get("language", "ja"))
+            body_lines = {l.strip() for l in body_of(text).splitlines()}
+            if line not in body_lines:
+                problems.append(f"add this line, exactly, to the last section of the note: {line}")
     return problems
 
 

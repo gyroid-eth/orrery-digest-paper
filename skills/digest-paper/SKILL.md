@@ -123,16 +123,14 @@ Then:
    Start with `review_status: needs-review`.
    Fill who made the note: `writer` and `reviewer` (registered names),
    `writer_program` and `reviewer_program` (`claude` or `codex`),
-   `writer_model` and `reviewer_model` if known (the formal ID: `model_raw`
-   from `whois`, e.g. `claude-opus-5-5`),
+   `writer_model` and `reviewer_model` (the formal ID: `model_raw` from
+   `whois`, e.g. `claude-opus-5-5`, or `unknown`; `check` refuses a model of
+   the other kind or the template's placeholder),
    and `review_pairing` as step 3 of the coordinator chose (your task says it
-   if you are not the coordinator). The "Review pairing" line in the last
-   section is one of these, as is:
-   - `- 確かめの組 / Review pairing: cross-vendor — 書き手（Claude）と別の会社のモデル（Codex）が確かめた。`
-     (swap the two names for a Codex writer)
-   - `- 確かめの組 / Review pairing: same-vendor — 書き手と同じ Claude の別の agent が、別の session で確かめた。別の会社のモデルによる独立した確かめではない。`
-     (Codex for a Codex team)
-   In an English note write the same in English.
+   if you are not the coordinator). `bundle.py check` then prints the exact
+   "Review pairing" line the last section must carry (it depends on the team
+   and the note language); copy it as is. For `same-vendor` it says the check
+   was not independent, by another company's model.
 5. `python3 SKILL_DIR/scripts/bundle.py check RUN` until it prints `ok`, then
    `bundle.py hash RUN` and send the reviewer a short Mail: the run folder,
    the digest, and what to check. Put nothing long in Mail; long text lives in

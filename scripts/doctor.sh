@@ -65,13 +65,15 @@ if [[ -z "$codex_bin" && -f "$AGENTSTACK_HOME/env.sh" ]]; then
   codex_bin="$(sed -n "s/^export AGENTSTACK_CODEX_BIN=//p" "$AGENTSTACK_HOME/env.sh" | tail -n 1 | tr -d "'\"")"
 fi
 [[ -n "$codex_bin" ]] || codex_bin="$(command -v codex 2>/dev/null || true)"
-if [[ -n "$codex_bin" ]]; then
+codex_real="$( [[ -n "$codex_bin" ]] && python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$codex_bin" 2>/dev/null || true)"
+if [[ "$codex_bin" == /mnt/* || "$codex_real" == /mnt/* ]]; then
+  # A Windows codex seen from WSL is never used, even if it answers.
+  note "codex at $codex_bin is the Windows one; ORRERY cannot use it from WSL. Install Codex inside WSL"
+elif [[ -n "$codex_bin" ]]; then
   # codex --version writes into CODEX_HOME; give it a throwaway one.
   probe_home="$(mktemp -d)"
   if CODEX_HOME="$probe_home" "$codex_bin" --version >/dev/null 2>&1; then
     have_codex=true
-  elif [[ "$codex_bin" == /mnt/* ]]; then
-    note "codex at $codex_bin is the Windows one and does not run inside WSL; install Codex inside WSL to use it"
   else
     note "codex at $codex_bin does not run ($codex_bin --version failed)"
   fi

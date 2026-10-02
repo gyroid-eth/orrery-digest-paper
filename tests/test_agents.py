@@ -40,3 +40,22 @@ def test_the_codex_ORRERY_saved_is_the_one_asked(tmp_path, monkeypatch):
     result = agents(tmp_path, monkeypatch, {"codex": 1})
     assert result["codex"] == str(saved) and result["team"] == "codex-only"
     assert not (tmp_path / "probed").exists()  # the probe used a throwaway CODEX_HOME
+
+
+def test_a_windows_codex_is_never_used_even_if_it_answers(tmp_path, monkeypatch):
+    """CheeryNewton P2-4: on WSL a Windows codex under /mnt/ may answer
+    --version through interop, but ORRERY cannot run it as a child."""
+    sys.path.insert(0, str(SCRIPTS))
+    import agents
+    calls = []
+    monkeypatch.setenv("AGENTSTACK_CODEX_BIN", "/mnt/c/Users/test/AppData/Roaming/npm/codex")
+    monkeypatch.setattr(agents.shutil, "which", lambda name: None)
+    monkeypatch.setattr(agents.subprocess, "run", lambda *a, **k: calls.append(a) or
+                        subprocess.CompletedProcess(a, 0))
+    import io, contextlib
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out):
+        agents.main()
+    result = json.loads(out.getvalue())
+    assert result["codex"] is None and result["team"] == "none" and not calls
+    assert "Windows codex" in result["notes"][0]

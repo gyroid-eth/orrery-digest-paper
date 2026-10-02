@@ -8,8 +8,8 @@
 Claude counts when `claude` is on PATH. Codex counts when the CLI ORRERY would
 launch actually runs: AGENTSTACK_CODEX_BIN, else the one saved in
 $AGENTSTACK_HOME/env.sh, else `codex` on PATH, asked for its version with a
-throwaway CODEX_HOME (the real one is never touched). On WSL a Windows
-`codex` under /mnt/ usually fails here, and is then reported as not usable.
+throwaway CODEX_HOME (the real one is never touched). A Windows `codex`
+under /mnt/ (WSL) is never used, even if it answers.
 Reads only.
 """
 from __future__ import annotations
@@ -39,7 +39,12 @@ def main() -> int:
     claude = shutil.which("claude")
     codex = None
     candidate = os.environ.get("AGENTSTACK_CODEX_BIN") or saved_codex_bin() or shutil.which("codex") or ""
-    if candidate:
+    real = os.path.realpath(candidate) if candidate else ""
+    if candidate and (candidate.startswith("/mnt/") or real.startswith("/mnt/")):
+        # A Windows codex seen from WSL: even if it answers --version through
+        # Windows interop, ORRERY cannot run it as a Linux child.
+        notes.append(f"{candidate} is a Windows codex; ORRERY cannot use it from WSL. Install Codex inside WSL")
+    elif candidate:
         with tempfile.TemporaryDirectory() as probe_home:
             try:
                 ok = subprocess.run([candidate, "--version"], env={**os.environ, "CODEX_HOME": probe_home},
@@ -48,8 +53,6 @@ def main() -> int:
                 ok = False
         if ok:
             codex = candidate
-        elif candidate.startswith("/mnt/"):
-            notes.append(f"{candidate} is a Windows codex and does not run here; install Codex inside WSL")
         else:
             notes.append(f"{candidate} --version failed; Codex is not usable")
     team = ("cross-vendor" if claude and codex else "claude-only" if claude
