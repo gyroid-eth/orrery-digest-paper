@@ -56,9 +56,38 @@ python3 -c 'import PIL' 2>/dev/null && ok "Pillow available (contact sheets)" \
 
 [[ -f "$AGENTSTACK_HOME/skills/delegate/SKILL.md" ]] && ok "ORRERY delegate skill found" \
   || warn "ORRERY core not found at $AGENTSTACK_HOME (the writer/reviewer team needs it)"
-for cli in claude codex; do
-  command -v "$cli" >/dev/null 2>&1 && ok "$cli on PATH" || warn "$cli not on PATH (needed for the $([[ $cli == claude ]] && echo writer || echo reviewer))"
-done
+# Which agents can take a role. One kind is enough (two agents of it write and
+# review: same-vendor); both make the usual cross-vendor team.
+have_claude=false have_codex=false
+command -v claude >/dev/null 2>&1 && have_claude=true
+codex_bin="${AGENTSTACK_CODEX_BIN:-}"
+if [[ -z "$codex_bin" && -f "$AGENTSTACK_HOME/env.sh" ]]; then
+  codex_bin="$(sed -n "s/^export AGENTSTACK_CODEX_BIN=//p" "$AGENTSTACK_HOME/env.sh" | tail -n 1 | tr -d "'\"")"
+fi
+[[ -n "$codex_bin" ]] || codex_bin="$(command -v codex 2>/dev/null || true)"
+codex_real="$( [[ -n "$codex_bin" ]] && python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$codex_bin" 2>/dev/null || true)"
+if [[ "$codex_bin" == /mnt/* || "$codex_real" == /mnt/* ]]; then
+  # A Windows codex seen from WSL is never used, even if it answers.
+  note "codex at $codex_bin is the Windows one; ORRERY cannot use it from WSL. Install Codex inside WSL"
+elif [[ -n "$codex_bin" ]]; then
+  # codex --version writes into CODEX_HOME; give it a throwaway one.
+  probe_home="$(mktemp -d)"
+  if CODEX_HOME="$probe_home" "$codex_bin" --version >/dev/null 2>&1; then
+    have_codex=true
+  else
+    note "codex at $codex_bin does not run ($codex_bin --version failed)"
+  fi
+  rm -rf "$probe_home"
+fi
+if [[ "$have_claude" == true && "$have_codex" == true ]]; then
+  ok "claude and codex: a Claude writer and a Codex reviewer (cross-vendor)"
+elif [[ "$have_claude" == true ]]; then
+  ok "claude only: two Claude agents write and review (same-vendor; not another company's model)"
+elif [[ "$have_codex" == true ]]; then
+  ok "codex only: two Codex agents write and review (same-vendor; not another company's model)"
+else
+  warn "neither claude nor a working codex found (one of them is needed)"
+fi
 note "PDF input is not supported by this version; convert with the Obsidian pdf-mistral plugin first"
 
 if [[ "$ZOTERO" == true ]]; then

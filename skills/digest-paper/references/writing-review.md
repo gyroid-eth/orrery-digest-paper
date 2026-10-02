@@ -20,6 +20,21 @@
 - **Say what is unknown.** Limitations the authors state, and questions the
   note could not settle, go in "Open points".
 
+## Same-vendor review
+
+When the writer and the reviewer are the same kind of agent (both Claude or
+both Codex), the reviewer starts from a clean session but shares the writer's
+model habits, so the usual blind spots are shared too. Do not trust a sentence
+because it reads the way you would have written it. In particular:
+
+- Compare every hedge in the note with the sentence it summarises
+  ("suggest", "may", "likely", "not involved"); stronger wording in the note
+  is the most common finding and the easiest one to share with the writer.
+- Check each figure/panel claim against the image and the caption, not
+  against the note's own description.
+- Say in the review's "Checked without findings" what you compared, so a
+  reader can judge the check without trusting it.
+
 ## figures.json
 
 A list, one row per adopted asset:
@@ -77,9 +92,11 @@ You are the <reviewer | writer> of a digest-paper run. Read
 both". Do not spawn any agent. Do not use any other skill of the same name.
 
 - Run folder: <RUN>
+- Team: <cross-vendor | same-vendor>; writer <name> (<claude | codex>), reviewer <name> (<claude | codex>)
 - Counterpart (Mail): <registered name of the coordinator>
 - Parent (cc): <the coordinator's own parent, or "none">
 - Note language: <ja | en>
-- The first draft digest will arrive by Mail from the writer.   # for a reviewer
+- The first draft digest will arrive by Mail from the writer. After reading
+  SKILL.md and this file, end your turn and wait for it; that is normal.   # for a reviewer
 - Report completion to <coordinator name> with send_message at importance high.
 ```

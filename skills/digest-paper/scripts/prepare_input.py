@@ -13,6 +13,7 @@ Reads only. The original Markdown and images are never modified. Creates
       source/images/      a copy of each resolved image, named a001.png ...
       draft/              empty; the writer puts note.md, assets/, evidence/ here
       review/             empty; the reviewer writes review-<n>.md here
+      tasks/              empty; the coordinator writes the other agent's task here
 
 RUNS defaults to $AGENTSTACK_HOME/addons/digest-paper/runs (AGENTSTACK_HOME
 defaults to ~/.agentstack), not the output folder: ORRERY lets every Codex
@@ -275,6 +276,19 @@ def source_links(md: Path, vault_root: Path | None, bib: dict | None) -> dict:
     return links
 
 
+def vault_warnings(output_dir: Path, vault_root: Path | None) -> list[str]:
+    """Why Obsidian may not show the published note, if it may not."""
+    if vault_root is None:
+        return ["no --vault-root: the note cannot link to the paper, and nothing checks that the "
+                "output folder is inside the vault Obsidian has open. Ask the user for the vault path"]
+    try:
+        output_dir.resolve().relative_to(vault_root.resolve())
+    except ValueError:
+        return [f"the output folder {output_dir} is outside the vault {vault_root}; Obsidian will not "
+                "show the note there. Ask the user before going on"]
+    return []
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n", 1)[0])
     parser.add_argument("--input", required=True, type=Path)
@@ -332,6 +346,7 @@ def main(argv: list[str] | None = None) -> int:
     (run / "draft" / "assets").mkdir(parents=True)
     (run / "draft" / "evidence").mkdir(parents=True)
     (run / "review").mkdir(parents=True)
+    (run / "tasks").mkdir(parents=True)
     shutil.copy2(md, run / "source" / "paper.md")
     bib = None
     if args.bib:
@@ -385,7 +400,9 @@ def main(argv: list[str] | None = None) -> int:
     }
     (run / "input.json").write_text(json.dumps(record, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
-    print(f"run: {run}")
+    print(f"run: {run}  (work in progress; the note is saved to the output folder only at publish)")
+    for line in vault_warnings(output_dir, vault_root):
+        print(f"warning: {line}")
     print(f"title: {title}")
     for kind in ("pdf", "mdpaper"):
         if record["links"][kind]:

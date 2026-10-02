@@ -321,9 +321,10 @@ def test_lit_publish_names_the_note_after_the_citekey(zotero, tmp_path):
     sh(SCRIPTS / "bundle.py", "adopt", run, "a001")
     (run / "draft" / "evidence" / "figures.json").write_text(json.dumps([{"file": "assets/a001.png"}]))
     front = ("---\ntitle: Bioinspired\nlanguage: ja\nreview_status: needs-review\nsource_check: ocr-and-images\n"
-             "writer: W\nreviewer: R\nrun_id: z1\ncitekey: {cite}\nzotero_item: ABCD2345\n"
+             "writer: W\nwriter_program: claude\nreviewer: R\nreviewer_program: codex\n"
+             "review_pairing: cross-vendor\nrun_id: z1\ncitekey: {cite}\nzotero_item: ABCD2345\n"
              "zotero_library: personal\ndoi: 10.1038/s41467-018-05569-8\n"
-             "zotero_link: zotero://select/library/items/ABCD2345\n---\n\n![Fig](assets/a001.png)\n")
+             "zotero_link: zotero://select/library/items/ABCD2345\n---\n\n- 確かめの組 / Review pairing: cross-vendor — 書き手（Claude）と別の会社のモデル（Codex）が確かめた。\n\n![Fig](assets/a001.png)\n")
     (run / "draft" / "note.md").write_text(front.format(cite="someoneelse2020"))
     bad = sh(SCRIPTS / "bundle.py", "check", run)
     assert bad.returncode == 1 and "`citekey` must be 'nojoomi2018bioinspired'" in bad.stdout

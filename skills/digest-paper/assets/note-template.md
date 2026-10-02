@@ -8,12 +8,15 @@ language: ja
 review_status: needs-review
 source_check: ocr-and-images
 writer: <writer name>
+writer_program: <claude | codex>
+writer_model: "<model_raw from whois, or unknown>"
 reviewer: <reviewer name>
+reviewer_program: <claude | codex>
+reviewer_model: "<model_raw from whois, or unknown>"
+review_pairing: <cross-vendor | same-vendor>
 run_id: <run id>
 publish: false
 ---
-
-# <paper title>
 
 > [!summary] 結論 / Bottom line
 > 2〜3 文。何を示し、何がまだ言えないか。
@@ -52,3 +55,4 @@ publish: false
 
 - 確認できなかったこと、OCR の欠落が疑われる箇所、図番号未確認の図。
 - レビュー: <reviewer> が本文と図 <asset IDs> に照らして確認（`review_status` 参照）。
+- <the "Review pairing" line that `bundle.py check` prints>
