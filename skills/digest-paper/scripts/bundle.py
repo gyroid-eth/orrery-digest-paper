@@ -189,8 +189,11 @@ def check(run: Path) -> list[str]:
         if fields.get("source_converter") != converter:
             problems.append(f"front matter: `source_converter` must be {converter!r} (the paper was "
                             "converted on this machine, not by pdf-mistral)")
-        if not re.search(rf"(?m)^- (?:変換 / )?Conversion:\s*{re.escape(converter)}\b", body_of(text)):
-            problems.append(f"add the line `- 変換 / Conversion: {converter} ...` (see SKILL.md, Writer step 4)")
+        if fields.get("source_check") != LOCAL_SOURCE_CHECK:
+            problems.append(f"front matter: `source_check` must be {LOCAL_SOURCE_CHECK!r} for a local conversion")
+        line = conversion_line(converter, fields.get("language", "ja"))
+        if line not in {l.strip() for l in body_of(text).splitlines()}:
+            problems.append(f"add this line, exactly, to the last section of the note: {line}")
     bib_path = run / "bib.json"
     if bib_path.is_file():
         bib = json.loads(bib_path.read_text(encoding="utf-8"))
@@ -239,6 +242,21 @@ def pairing_line(pairing: str, writer_program: str, reviewer_program: str, langu
         return f"- 確かめの組 / Review pairing: cross-vendor — 書き手（{w}）と別の会社のモデル（{r}）が確かめた。"
     return (f"- 確かめの組 / Review pairing: same-vendor — 書き手と同じ {w} の別の agent が、別の session で"
             "確かめた。別の会社のモデルによる独立した確かめではない。")
+
+
+LOCAL_SOURCE_CHECK = "local-text-and-page-images"
+
+
+def conversion_line(converter: str, language: str) -> str:
+    """The line a note made from a local conversion must carry in its body,
+    so a reader knows the text and figures are rougher than pdf-mistral's."""
+    if language == "en":
+        return (f"- Conversion: {converter} — the PDF was converted on this machine, not by pdf-mistral; "
+                "no OCR. Figures were cut out from their captions, otherwise only whole-page images; "
+                "the text may have jumbled columns, equations and tables.")
+    return (f"- 変換 / Conversion: {converter} — PDF をこの機械で変換した（pdf-mistral ではない）。OCR なし。"
+            "図はキャプションから見つけたものを切り出し、見つからない図はページ全体の画像だけ。"
+            "本文の段組・数式・表は崩れていることがある。")
 
 
 def model_vendor(model: str) -> str | None:

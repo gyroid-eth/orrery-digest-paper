@@ -114,16 +114,29 @@ def test_the_run_and_the_note_carry_the_local_conversion(tmp_path):
             "reviewer_program: codex\nreview_pairing: cross-vendor\nrun_id: l1\n{extra}---\n\n"
             "- pdf: [[Papers/Sample 2024.pdf]]\n- mdpaper: [[20_MDPapers/Sample 2024 (local)]]\n"
             "{line}- Review pairing: cross-vendor — written by Claude and checked by another company's model (Codex).\n\n![Fig. 1](assets/a001.png)\n")
+    sys.path.insert(0, str(SCRIPTS))
+    from bundle import conversion_line
+    exact = conversion_line("local-pdfium", "en") + "\n"
     (run / "draft" / "note.md").write_text(note.format(extra="", line=""))
     missing = sh(SCRIPTS / "bundle.py", "check", run).stdout
     assert "`source_converter` must be 'local-pdfium'" in missing and "Conversion: local-pdfium" in missing
-    (run / "draft" / "note.md").write_text(note.format(
-        extra="source_converter: local-pdfium\n", line="- 変換 / Conversion: local-pdfium — PDF をこの機械で変換した。\n"))
+    # CheeryNewton P2-L2: only a front matter comment, a short line in the body,
+    # or the pdf-mistral source_check does not pass.
+    for extra, line in [("source_converter: local-pdfium\n# - Conversion: local-pdfium\n", ""),
+                        ("source_converter: local-pdfium\n", "- Conversion: local-pdfium\n")]:
+        (run / "draft" / "note.md").write_text(note.format(extra=extra, line=line))
+        assert "add this line, exactly" in sh(SCRIPTS / "bundle.py", "check", run).stdout
+    (run / "draft" / "note.md").write_text(note.format(extra="source_converter: local-pdfium\n", line=exact)
+                                           .replace("source_check: local-text-and-page-images", "source_check: ocr-and-images"))
+    assert "`source_check` must be 'local-text-and-page-images'" in sh(SCRIPTS / "bundle.py", "check", run).stdout
+    (run / "draft" / "note.md").write_text(note.format(extra="source_converter: local-pdfium\n", line=exact))
     assert sh(SCRIPTS / "bundle.py", "check", run).stdout.strip() == "ok"
     published = sh(SCRIPTS / "bundle.py", "publish", run)
     assert published.returncode == 0, published.stderr
     result = json.loads((Path(published.stdout.strip()).parent / "evidence" / "result.json").read_text())
     assert result["source_converter"] == "local-pdfium"
+    # CheeryNewton P3-R1: a model not recorded is written as unknown.
+    assert result["writer_model"] == result["reviewer_model"] == "unknown"
 
 
 def test_a_figure_on_a_rotated_page_is_cut_out_not_blank(tmp_path):

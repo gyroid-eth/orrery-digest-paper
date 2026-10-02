@@ -14,7 +14,7 @@ rest of the run is unchanged.
 Writes, without overwriting anything:
 
     DIR/<pdf name> (local).md            text of each page, with figure embeds
-    IMAGES/<pdf name>_p03-fig1.png       each raster figure, cut from a 300 dpi render
+    IMAGES/<pdf name>_p03-fig1.png       each figure found from its caption, cut from a 300 dpi render
     IMAGES/<pdf name>_p03.png            each page as a whole, 150 dpi
 
 DIR defaults to VAULT/20_MDPapers and IMAGES to DIR/local-images. The name ends
@@ -23,8 +23,9 @@ with it; when both exist, use the pdf-mistral one.
 
 What this is not: there is no OCR (a scanned PDF without a text layer stops
 here), the text keeps the PDF's own reading order (two columns, equations and
-tables can come out jumbled), and a vector figure (a plot drawn as lines) is
-not cut out on its own; it is only in the page image. The Markdown says so in
+tables can come out jumbled), and a figure is cut out only when its caption is
+found ("Fig. 2 |", "Figure 2." at the start of a line); otherwise, or when a
+cut-out misses a panel, it is only in the page image. The Markdown says so in
 its front matter (`converter: local-pdfium`), and digest-paper carries that
 into the note.
 
@@ -259,8 +260,8 @@ def main(argv: list[str] | None = None) -> int:
     out += [f"pages: {len(pdf)}", f"figure_dpi: {FIGURE_DPI}", "---", "",
             f"# {title}", "",
             "> [!warning] この Markdown は、PDF をこの機械で変換したもの（pdf-mistral ではない）。"
-            "OCR はしていない。2 段組・数式・表は崩れていることがある。図はラスターの図だけを切り出し、"
-            "ベクターの図（線で描いたグラフなど）はページ全体の画像にだけ入っている。",
+            "OCR はしていない。2 段組・数式・表は崩れていることがある。図はキャプションから見つけたものを、"
+            "ベクターの部分も含めて切り出した。見つからない図や、パネルが欠けた切り出しは、ページ全体の画像で確かめる。",
             ""]
     figures = 0
     for p in pages:

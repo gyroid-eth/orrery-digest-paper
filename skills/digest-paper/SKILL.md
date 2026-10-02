@@ -51,7 +51,8 @@ Find your role before anything else:
    Markdown path; use that as the input. Tell the user what it does not do:
    no OCR (a scanned PDF stops with exit 3; then only pdf-mistral can help),
    text in the PDF's own order (columns, equations and tables may be jumbled),
-   and vector figures only as whole-page images. Prefer an existing
+   and figures cut out from their captions (a figure it cannot find, or a
+   cut-out missing a panel, is only in the whole-page image). Prefer an existing
    pdf-mistral Markdown of the same paper over a local one. Never fetch a paper
    from the internet.
 2. **Prepare** (read-only on the originals):
@@ -148,9 +149,9 @@ Then:
    and the note language); copy it as is. For `same-vendor` it says the check
    was not independent, by another company's model.
    If `prepare_input.py` printed `converter: local-pdfium`, also set
-   `source_converter: local-pdfium` and `source_check: local-text-and-page-images`,
-   and add to the last section:
-   `- 変換 / Conversion: local-pdfium — PDF をこの機械で変換した（pdf-mistral ではない）。OCR なし。図はラスターの図の切り出しとページ全体の画像で、本文の段組・数式・表は崩れていることがある。`
+   `source_converter: local-pdfium` and `source_check: local-text-and-page-images`;
+   `bundle.py check` then prints the exact "Conversion" line the last section
+   must carry, and refuses the note without it.
    With a local conversion, each figure the converter found is cut out
    (`..._p05-fig1.png`) with its caption's first line under it; a figure it
    did not find is only inside a page image (`..._p05.png`). Check that a

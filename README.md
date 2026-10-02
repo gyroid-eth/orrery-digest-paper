@@ -125,7 +125,7 @@ pypdfium2 and Pillow from PyPI once; uv comes with ORRERY).
 
 | | pdf-mistral | local |
 |---|---|---|
-| Figures | cut out one by one | raster figures (photos, micrographs) cut out at 300 dpi; **vector figures (plots, diagrams drawn as lines) only as whole-page images** |
+| Figures | cut out one by one | each figure found from its caption cut out at 300 dpi, vector panels included; **a figure without a recognisable caption only as a whole-page image** |
 | Text | headings, tables and math as Markdown | in the PDF's own order; two columns, math and tables may be jumbled |
 | Scanned PDF | OCR | stops (no OCR) |
 | Sent out | the PDF goes to Mistral | nothing |
