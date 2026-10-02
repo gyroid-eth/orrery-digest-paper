@@ -10,7 +10,7 @@ Obsidian の **pdf-mistral** plugin で Markdown にした論文を 1 本渡す�
 
 Claude と Codex の片方しか使えない機械では、同じ種類の agent 2 体が書き手と確かめ役を分けて受け持ちます（下の「確かめの組」）。
 
-この版が受け付けるのは、**pdf-mistral の出力（Markdown と図）だけ**です。PDF を直接渡すことや、DOI や URL から論文を取ってくることはしません。日本語と英語の論文に対応し、ノートの言語は `ja`（既定）か `en` を選べます。
+受け付けるのは **Markdown と図に変換済みの論文**です。変換は Obsidian の pdf-mistral plugin で行います。Mistral のキーが無いときや、Mistral に送れない論文は、この add-on の **local の変換**（下）でも作れます。DOI や URL から論文を取ってくることはしません。日本語と英語の論文に対応し、ノートの言語は `ja`（既定）か `en` を選べます。
 
 ## 必要なもの
 
@@ -19,7 +19,7 @@ Claude と Codex の片方しか使えない機械では、同じ種類の agent
 - Python 3.9 以上
 - Pillow（推奨・任意）: 図を数枚の一覧画像で見渡せるようになります。無いと、書き手が画像を 1 枚ずつ開きます。pdf-mistral は図のパネルごとに画像を保存することが多く、数十枚になることがあります。
   WSL（Ubuntu）: `sudo apt install python3-pil`・macOS: `python3 -m pip install pillow`
-- Obsidian と pdf-mistral の plugin（論文を Markdown にするため）
+- Obsidian と pdf-mistral の plugin（論文を Markdown にするため。local の変換だけを使うなら不要）
 - その plugin に入れる Mistral の API キー: [console.mistral.ai](https://console.mistral.ai/) にログインし、**API Keys** でキーを作ります。OCR はページ数に応じた従量課金なので、先に支払いの設定が要ることがあります（月の上限を決めておくと安心です）。キーは plugin の設定の中だけに置きます
 
 ## install
@@ -67,6 +67,24 @@ citekey は、ノートの著者・題名・年から Zotero の Better BibTeX �
 - `blocked`: 確かめられなかった
 
 `checked` は、論文そのものが正しいという保証ではありません。
+
+### Mistral のキーが無いとき: local の変換
+
+```bash
+uv run ~/.agentstack/addons/digest-paper/current/skills/digest-paper/scripts/pdf_local.py \
+  --pdf "<vault>/10_Reference/Papers/<論文>.pdf" --vault-root "<vault>"
+```
+
+または agent に「キーが無いので local で変換してから」と頼みます。`<vault>/20_MDPapers/<PDF の名前> (local).md` と `20_MDPapers/local-images/` ができ、それを入力にして同じ手順でノートを作ります。PDF はどこにも送りません（uv が初回だけ pypdfium2 と Pillow を PyPI から取ってきます。uv は ORRERY と一緒に入っています）。
+
+| | pdf-mistral | local |
+|---|---|---|
+| 図 | 図ごとに切り出す | ラスターの図（写真・顕微鏡像など）は 300 dpi で切り出す。**ベクターの図（線で描いたグラフ・模式図）はページ全体の画像だけ** |
+| 本文 | 見出し・表・数式を Markdown に | PDF の文字の順のまま。2 段組・数式・表は崩れることがある |
+| スキャンの PDF | OCR する | 止まる（OCR はしない） |
+| 外への送信 | PDF を Mistral に送る | 送らない |
+
+local の変換から作ったノートには、front matter の `source_converter: local-pdfium` と、末尾の「変換 / Conversion」の行が入ります。同じ論文を後で pdf-mistral で変換しても、名前（`(local)` の有無）が違うのでぶつかりません。
 
 ### 確かめの組
 

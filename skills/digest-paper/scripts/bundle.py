@@ -181,6 +181,16 @@ def check(run: Path) -> list[str]:
     for kind in ("pdf", "mdpaper"):
         if links.get(kind) and f"- {kind}: {links[kind]}" not in lines:
             problems.append(f"bibliography: add the line `- {kind}: {links[kind]}` (from input.json links)")
+    record = json.loads((run / "input.json").read_text(encoding="utf-8")) if (run / "input.json").is_file() else {}
+    converter = (record.get("source") or {}).get("converter") or "pdf-mistral"
+    if converter != "pdf-mistral":
+        # A note made from the local conversion says so, in the front matter
+        # and in its text, since its figures and text are rougher.
+        if fields.get("source_converter") != converter:
+            problems.append(f"front matter: `source_converter` must be {converter!r} (the paper was "
+                            "converted on this machine, not by pdf-mistral)")
+        if not re.search(rf"Conversion:\s*{re.escape(converter)}\b", text):
+            problems.append(f"add the line `- 変換 / Conversion: {converter} ...` (see SKILL.md, Writer step 4)")
     bib_path = run / "bib.json"
     if bib_path.is_file():
         bib = json.loads(bib_path.read_text(encoding="utf-8"))
@@ -517,6 +527,7 @@ def cmd_publish(run: Path, revision: bool, layout: str = "auto") -> int:
         "published": _dt.datetime.now().astimezone().isoformat(timespec="seconds"),
         "review_status": status,
         "source_check": fields.get("source_check"),
+        "source_converter": (record.get("source") or {}).get("converter") or "pdf-mistral",
         "writer": fields["writer"],
         "writer_program": fields["writer_program"],
         "reviewer": fields["reviewer"],

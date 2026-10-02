@@ -244,7 +244,21 @@ def vault_link(path: Path, vault_root: Path, drop_suffix: bool = False) -> str |
     return f"[[{rel_text}]]"
 
 
-def source_links(md: Path, vault_root: Path | None, bib: dict | None) -> dict:
+def md_front_matter(text: str) -> dict[str, str]:
+    """The flat `key: value` lines of a Markdown file's front matter."""
+    if not text.startswith("---\n"):
+        return {}
+    end = text.find("\n---", 4)
+    fields = {}
+    for line in text[4:end if end > 0 else 4].splitlines():
+        if ":" in line and not line.startswith((" ", "-", "#")):
+            key, value = line.split(":", 1)
+            fields[key.strip()] = value.strip().strip("'\"")
+    return fields
+
+
+def source_links(md: Path, vault_root: Path | None, bib: dict | None,
+                 named_pdf: str = "") -> dict:
     """Links from the note to the Markdown paper and its PDF, for the
     bibliography (`- pdf: [[...]]`, `- mdpaper: [[...]]`, as in Lit notes).
     A link that cannot be made is null, with the reason."""
@@ -263,6 +277,12 @@ def source_links(md: Path, vault_root: Path | None, bib: dict | None) -> dict:
                 and vault_link(Path(a["local_path"]), vault_root)]
         same = [p for p in pdfs if unicodedata.normalize("NFC", p.stem) == unicodedata.normalize("NFC", md.stem)]
         pdfs = same if len(pdfs) > 1 and same else pdfs
+    if not pdfs and named_pdf:
+        # The local converter names its PDF (vault relative) in the front
+        # matter, since its Markdown is called "<pdf name> (local).md".
+        candidate = (vault_root / named_pdf).resolve()
+        if candidate.is_file() and vault_link(candidate, vault_root):
+            pdfs = [candidate]
     if not pdfs:
         # pdf-mistral names the Markdown after the PDF.
         pdfs = find_by_name(md.stem + ".pdf", [vault_root])
@@ -323,6 +343,9 @@ def main(argv: list[str] | None = None) -> int:
     lines = text.splitlines()
     source_hash = sha256_file(md)
     title = next((l[2:].strip() for l in lines if l.startswith("# ")), md.stem)
+    source_fields = md_front_matter(text)
+    # pdf-mistral writes no front matter; the local converter says so.
+    converter = source_fields.get("converter") or "pdf-mistral"
     run_id = args.run_id or f"{slug(title, 40)}-{source_hash[:8]}-{_dt.datetime.now():%Y%m%dT%H%M%S}"
     if not re.fullmatch(r"[^/\\\x00]{1,120}", run_id) or run_id in (".", ".."):
         print("prepare_input: --run-id must be a plain folder name", file=sys.stderr)
@@ -389,13 +412,14 @@ def main(argv: list[str] | None = None) -> int:
         "created": _dt.datetime.now().astimezone().isoformat(timespec="seconds"),
         "language": args.lang,
         "title_guess": title,
-        "source": {"path": str(md.resolve()), "sha256": source_hash, "lines": len(lines)},
+        "source": {"path": str(md.resolve()), "sha256": source_hash, "lines": len(lines),
+                   "converter": converter},
         "vault_root": str(vault_root) if vault_root else None,
         "image_roots": [str(r) for r in image_roots],
         "output_dir": str(output_dir.resolve()),
         "summary": summary,
         "bib": {k: bib.get(k) for k in ("source", "citekey", "item_key", "library_id", "doi")} if bib else None,
-        "links": source_links(md, vault_root, bib),
+        "links": source_links(md, vault_root, bib, source_fields.get("source_pdf", "")),
         "images": images,
     }
     (run / "input.json").write_text(json.dumps(record, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -404,6 +428,8 @@ def main(argv: list[str] | None = None) -> int:
     for line in vault_warnings(output_dir, vault_root):
         print(f"warning: {line}")
     print(f"title: {title}")
+    if converter != "pdf-mistral":
+        print(f"converter: {converter} (the note must say so: see SKILL.md, Writer step 4)")
     for kind in ("pdf", "mdpaper"):
         if record["links"][kind]:
             print(f"{kind}: {record['links'][kind]}")

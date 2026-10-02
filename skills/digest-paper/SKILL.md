@@ -1,6 +1,6 @@
 ---
 name: digest-paper
-description: Turn one paper already converted to Markdown with its figure images by the Obsidian pdf-mistral plugin into a figure-backed reading note, written by one agent and checked against the text and the actual figures by another over ORRERY Mail — a Claude writer and a Codex reviewer, or two agents of one kind when only Claude or only Codex can run. Use when the user hands over a converted paper and asks for a note, digest or summary. Japanese and English papers.
+description: Turn one paper already converted to Markdown with its figure images (by the Obsidian pdf-mistral plugin, or by this skill's local converter when there is no Mistral key) into a figure-backed reading note, written by one agent and checked against the text and the actual figures by another over ORRERY Mail — a Claude writer and a Codex reviewer, or two agents of one kind when only Claude or only Codex can run. Use when the user hands over a converted paper and asks for a note, digest or summary. Japanese and English papers.
 ---
 
 # digest-paper (ORRERY add-on)
@@ -43,8 +43,17 @@ Find your role before anything else:
      `prepare_input.py` and `publish` warn when it is outside the vault: stop
      and ask the user then;
    - note language `ja` (default) or `en`.
-   PDF input is not supported by this version: ask the user to convert it with
-   the pdf-mistral plugin first. Never fetch a paper from the internet.
+   If the user has only the PDF (no Mistral key, or a paper that must not be
+   sent to Mistral), offer the **local conversion** and run it once they agree:
+   `uv run SKILL_DIR/scripts/pdf_local.py --pdf PDF --vault-root V`
+   (uv comes with ORRERY; it fetches pypdfium2 and Pillow once). It writes
+   `<pdf name> (local).md` and its images inside the vault and prints the
+   Markdown path; use that as the input. Tell the user what it does not do:
+   no OCR (a scanned PDF stops with exit 3; then only pdf-mistral can help),
+   text in the PDF's own order (columns, equations and tables may be jumbled),
+   and vector figures only as whole-page images. Prefer an existing
+   pdf-mistral Markdown of the same paper over a local one. Never fetch a paper
+   from the internet.
 2. **Prepare** (read-only on the originals):
    `python3 SKILL_DIR/scripts/prepare_input.py --input MD --output-dir OUT [--vault-root V] [--image-root DIR ...] --lang ja`
    It prints the run folder `RUN`. If images are unresolved, tell the user
@@ -138,6 +147,15 @@ Then:
    "Review pairing" line the last section must carry (it depends on the team
    and the note language); copy it as is. For `same-vendor` it says the check
    was not independent, by another company's model.
+   If `prepare_input.py` printed `converter: local-pdfium`, also set
+   `source_converter: local-pdfium` and `source_check: local-text-and-page-images`,
+   and add to the last section:
+   `- 変換 / Conversion: local-pdfium — PDF をこの機械で変換した（pdf-mistral ではない）。OCR なし。図はラスターの図の切り出しとページ全体の画像で、本文の段組・数式・表は崩れていることがある。`
+   With a local conversion, a printed figure may only be inside a page image
+   (`..._p05.png`): say which part of the page it is ("Fig. 3, right half of
+   the p. 5 image"), and adopt the page image for it. Where the text looks
+   jumbled, check it against the page image rather than repairing it from
+   guesswork.
 5. `python3 SKILL_DIR/scripts/bundle.py check RUN` until it prints `ok`, then
    `bundle.py hash RUN` and send the reviewer a short Mail: the run folder,
    the digest, and what to check. Put nothing long in Mail; long text lives in
