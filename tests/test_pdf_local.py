@@ -113,7 +113,7 @@ def test_the_run_and_the_note_carry_the_local_conversion(tmp_path):
             "source_check: local-text-and-page-images\nwriter: W\nwriter_program: claude\nreviewer: R\n"
             "reviewer_program: codex\nreview_pairing: cross-vendor\nrun_id: l1\n{extra}---\n\n"
             "- pdf: [[Papers/Sample 2024.pdf]]\n- mdpaper: [[20_MDPapers/Sample 2024 (local)]]\n"
-            "{line}- Review pairing: cross-vendor\n\n![Fig. 1](assets/a001.png)\n")
+            "{line}- Review pairing: cross-vendor — written by Claude and checked by another company's model (Codex).\n\n![Fig. 1](assets/a001.png)\n")
     (run / "draft" / "note.md").write_text(note.format(extra="", line=""))
     missing = sh(SCRIPTS / "bundle.py", "check", run).stdout
     assert "`source_converter` must be 'local-pdfium'" in missing and "Conversion: local-pdfium" in missing
