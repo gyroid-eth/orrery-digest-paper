@@ -343,6 +343,8 @@ def test_a_same_vendor_note_is_published_and_says_so(run, program):
     assert result["review_pairing"] == "same-vendor"
     assert result["writer_program"] == result["reviewer_program"] == program
     assert (result["writer"], result["reviewer"]) == ("Writer-Curie", "Reviewer-Bohr")
+    # CheeryNewton P3-R1: a model not recorded is written as unknown.
+    assert result["writer_model"] == result["reviewer_model"] == "unknown"
 
 
 @pytest.mark.parametrize("edit, problem", [

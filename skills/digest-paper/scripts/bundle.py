@@ -530,8 +530,8 @@ def cmd_publish(run: Path, revision: bool, layout: str = "auto") -> int:
         "source_sha256": record["source"]["sha256"],
     }
     for key in ("writer_model", "reviewer_model"):
-        if fields.get(key):
-            result[key] = fields[key]
+        # A model that was not recorded is written as unknown, never left out.
+        result[key] = fields.get(key) or "unknown"
     if (run / "bib.json").is_file():
         shutil.copy2(run / "bib.json", evidence / "bib.json")
     if note_name != "note.md":

@@ -131,7 +131,8 @@ Then:
    `writer_program` and `reviewer_program` (`claude` or `codex`),
    `writer_model` and `reviewer_model` (the formal ID: `model_raw` from
    `whois`, e.g. `claude-opus-5-5`, or `unknown`; `check` refuses a model of
-   the other kind or the template's placeholder),
+   the other kind or the template's placeholder; a model left out is recorded
+   as `unknown` in `result.json`),
    and `review_pairing` as step 3 of the coordinator chose (your task says it
    if you are not the coordinator). `bundle.py check` then prints the exact
    "Review pairing" line the last section must carry (it depends on the team
