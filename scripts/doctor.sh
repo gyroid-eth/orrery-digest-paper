@@ -88,7 +88,11 @@ elif [[ "$have_codex" == true ]]; then
 else
   warn "neither claude nor a working codex found (one of them is needed)"
 fi
-note "PDF input is not supported by this version; convert with the Obsidian pdf-mistral plugin first"
+if command -v uv >/dev/null 2>&1; then
+  ok "uv found: a PDF can be converted on this machine without a Mistral key (scripts/pdf_local.py)"
+else
+  note "uv not found: without it only pdf-mistral output can be used (uv comes with ORRERY)"
+fi
 
 if [[ "$ZOTERO" == true ]]; then
   # Read-only: ping, Local API root and Better BibTeX api.ready.

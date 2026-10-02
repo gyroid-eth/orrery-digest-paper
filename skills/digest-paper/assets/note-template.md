@@ -55,4 +55,5 @@ publish: false
 
 - 確認できなかったこと、OCR の欠落が疑われる箇所、図番号未確認の図。
 - レビュー: <reviewer> が本文と図 <asset IDs> に照らして確認（`review_status` 参照）。
+- <only for a local conversion: the "変換 / Conversion" line in SKILL.md, Writer step 4>
 - <the "Review pairing" line that `bundle.py check` prints>

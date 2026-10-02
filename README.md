@@ -14,9 +14,11 @@ Markdown, and a small ORRERY agent team makes a reading note with figures:
 On a machine where only Claude or only Codex can run, two agents of that one
 kind take the two roles (see "Review pairing" below).
 
-This version accepts **pdf-mistral output only** (Markdown plus figure
-images). It does not take a PDF directly and never fetches a paper by DOI or
-URL. Japanese and English papers; the note language is `ja` (default) or `en`.
+The input is a paper **already converted to Markdown plus figure images**,
+normally by the Obsidian pdf-mistral plugin. Without a Mistral key, or for a
+paper that must not be sent to Mistral, the add-on's **local conversion**
+(below) makes the same input on your machine. It never fetches a paper by DOI
+or URL. Japanese and English papers; the note language is `ja` (default) or `en`.
 
 ## Requirements
 
@@ -29,7 +31,8 @@ URL. Japanese and English papers; the note language is `ja` (default) or `en`.
   overview sheets instead of opening every image; pdf-mistral often saves each
   panel as its own image, so a paper can have dozens.
   WSL / Ubuntu: `sudo apt install python3-pil` · macOS: `python3 -m pip install pillow`
-- Obsidian with the pdf-mistral plugin, to convert papers
+- Obsidian with the pdf-mistral plugin, to convert papers (not needed if you
+  only use the local conversion)
 - A Mistral API key for that plugin: sign in at [console.mistral.ai](https://console.mistral.ai/), open **API Keys**, and create a key. OCR is billed per page, so you may need to turn on billing first (setting a monthly limit is a good idea). Keep the key in the plugin's settings only
 
 ## Install
@@ -107,6 +110,30 @@ line is left out and `evidence/input.json` says why. Links need the vault root.
 - `blocked`: something could not be checked.
 
 `checked` is not a statement that the paper itself is right.
+
+### No Mistral key: local conversion
+
+```bash
+uv run ~/.agentstack/addons/digest-paper/current/skills/digest-paper/scripts/pdf_local.py \
+  --pdf "<vault>/10_Reference/Papers/<paper>.pdf" --vault-root "<vault>"
+```
+
+or ask the agent to "convert it locally first". It writes
+`<vault>/20_MDPapers/<pdf name> (local).md` and `20_MDPapers/local-images/`,
+which are then used as the input. Nothing is sent anywhere (uv fetches
+pypdfium2 and Pillow from PyPI once; uv comes with ORRERY).
+
+| | pdf-mistral | local |
+|---|---|---|
+| Figures | cut out one by one | each figure found from its caption cut out at 300 dpi, vector panels included; **a figure without a recognisable caption only as a whole-page image** |
+| Text | headings, tables and math as Markdown | in the PDF's own order; two columns, math and tables may be jumbled |
+| Scanned PDF | OCR | stops (no OCR) |
+| Sent out | the PDF goes to Mistral | nothing |
+
+A note made from a local conversion has `source_converter: local-pdfium` in
+its front matter and a "Conversion" line at the end. A later pdf-mistral
+conversion of the same paper has a different name (no "(local)"), so the two
+never collide.
 
 ### Review pairing
 
