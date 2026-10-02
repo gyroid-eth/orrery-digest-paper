@@ -1,6 +1,6 @@
 ---
 name: digest-paper
-description: Turn one paper already converted by the Obsidian pdf-mistral plugin (a Markdown file plus its figure images) into a figure-backed reading note, written by a Claude agent and checked against the text and the actual figures by a Codex agent over ORRERY Mail. Use when the user hands over a pdf-mistral Markdown paper and asks for a note, digest or summary. Japanese and English papers.
+description: Turn one paper already converted to Markdown with its figure images by the Obsidian pdf-mistral plugin into a figure-backed reading note, written by one agent and checked against the text and the actual figures by another over ORRERY Mail — a Claude writer and a Codex reviewer, or two agents of one kind when only Claude or only Codex can run. Use when the user hands over a converted paper and asks for a note, digest or summary. Japanese and English papers.
 ---
 
 # digest-paper (ORRERY add-on)

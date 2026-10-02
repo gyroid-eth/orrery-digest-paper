@@ -13,6 +13,7 @@ Reads only. The original Markdown and images are never modified. Creates
       source/images/      a copy of each resolved image, named a001.png ...
       draft/              empty; the writer puts note.md, assets/, evidence/ here
       review/             empty; the reviewer writes review-<n>.md here
+      tasks/              empty; the coordinator writes the other agent's task here
 
 RUNS defaults to $AGENTSTACK_HOME/addons/digest-paper/runs (AGENTSTACK_HOME
 defaults to ~/.agentstack), not the output folder: ORRERY lets every Codex
@@ -332,6 +333,7 @@ def main(argv: list[str] | None = None) -> int:
     (run / "draft" / "assets").mkdir(parents=True)
     (run / "draft" / "evidence").mkdir(parents=True)
     (run / "review").mkdir(parents=True)
+    (run / "tasks").mkdir(parents=True)
     shutil.copy2(md, run / "source" / "paper.md")
     bib = None
     if args.bib:

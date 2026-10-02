@@ -18,8 +18,6 @@ run_id: <run id>
 publish: false
 ---
 
-# <paper title>
-
 > [!summary] 結論 / Bottom line
 > 2〜3 文。何を示し、何がまだ言えないか。
 
