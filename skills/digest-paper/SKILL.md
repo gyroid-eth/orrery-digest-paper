@@ -49,10 +49,9 @@ Find your role before anything else:
    a Codex agent can write to it even when the output folder is a Windows
    vault under `/mnt/c`; only the finished note goes to the output folder.
    Use the printed path as is; do not move the run.
-3. **Choose the team.** Find out which agents can run here: Claude if
-   `command -v claude` succeeds; Codex if the ORRERY `delegate` skill's Codex
-   resolve step returns a non-empty `codex_bin` (a Windows `codex` under
-   `/mnt/c/` does not count on WSL). Then:
+3. **Choose the team.** `python3 SKILL_DIR/scripts/agents.py` prints which
+   agents can run here (`team`: `cross-vendor`, `claude-only`, `codex-only`
+   or `none`; a Windows `codex` under `/mnt/` on WSL does not count). Then:
 
    | You are | The other kind can run | You are the | You start | `review_pairing` |
    |---|---|---|---|---|
