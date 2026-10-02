@@ -151,9 +151,12 @@ Then:
    `source_converter: local-pdfium` and `source_check: local-text-and-page-images`,
    and add to the last section:
    `- 変換 / Conversion: local-pdfium — PDF をこの機械で変換した（pdf-mistral ではない）。OCR なし。図はラスターの図の切り出しとページ全体の画像で、本文の段組・数式・表は崩れていることがある。`
-   With a local conversion, a printed figure may only be inside a page image
-   (`..._p05.png`): say which part of the page it is ("Fig. 3, right half of
-   the p. 5 image"), and adopt the page image for it. Where the text looks
+   With a local conversion, each figure the converter found is cut out
+   (`..._p05-fig1.png`) with its caption's first line under it; a figure it
+   did not find is only inside a page image (`..._p05.png`). Check that a
+   cut-out has every panel the caption names; if one is missing, adopt the
+   page image instead and say which part of the page the figure is ("Fig. 3,
+   upper half of the p. 5 image"). Where the text looks
    jumbled, check it against the page image rather than repairing it from
    guesswork.
 5. `python3 SKILL_DIR/scripts/bundle.py check RUN` until it prints `ok`, then

@@ -83,22 +83,99 @@ def page_text(page) -> str:
     return "\n".join(lines).strip()
 
 
-def figure_boxes(page, raw) -> list[tuple[float, float, float, float]]:
-    """Bounding boxes (left, bottom, right, top in PDF points) of the raster
-    images on a page that are large enough to be figures, top to bottom."""
+# A caption starts a line with its figure number and a separator ("Fig. 2 |",
+# "Figure 2.", "図 2:"); "(Fig. 3)." in running text does not.
+CAPTION = re.compile(r"(?:Fig\.|Figure|FIGURE|図)[ \t]*\d+[a-z]?[ \t]*[|.:｜]")
+CAPTION_WORDS = ("Fig.", "Figure", "FIGURE", "図")
+# Running headers and footers live in these bands (points from the edge).
+EDGE_BAND = 45
+
+
+def raster_boxes(page, raw) -> list[tuple[float, float, float, float]]:
+    """Raster images on the page large enough to be figures."""
     boxes = []
-    for obj in page.get_objects(filter=[raw.FPDF_PAGEOBJ_IMAGE], max_depth=3):
+    for obj in page.get_objects(filter=[raw.FPDF_PAGEOBJ_IMAGE], max_depth=0):
         left, bottom, right, top = obj.get_bounds()
         if min(right - left, top - bottom) >= MIN_FIGURE_INCHES * 72:
             boxes.append((left, bottom, right, top))
-    boxes.sort(key=lambda b: (-b[3], b[0]))
-    # A figure built from several overlapping images is cut once.
+    return boxes
+
+
+def figure_boxes(page, raw, textpage) -> list[tuple[tuple[float, float, float, float], str]]:
+    """Each figure on the page as (box, caption start), top to bottom.
+
+    A figure is what is drawn above its caption ("Fig. 2 |", "Figure 2.", ...
+    at the start of a line): every image and vector path between the caption
+    and the previous caption (or the header band), so vector panels and their
+    labels come with it. Without a caption on the page, large raster images
+    are used alone. Boxes are in PDF points (left, bottom, right, top)."""
+    width, height = page.get_size()
+    captions = []
+    seen = set()
+    for word in CAPTION_WORDS:
+        # pdfium's own search, so the index matches its character boxes.
+        searcher = textpage.search(word, match_case=True)
+        while (found := searcher.get_next()) is not None:
+            index = found[0]
+            if index in seen:
+                continue
+            seen.add(index)
+            before = textpage.get_text_range(max(0, index - 1), 1) if index else "\n"
+            if before not in ("\n", "\r", ""):
+                continue  # not at the start of a line
+            head = textpage.get_text_range(index, 200)
+            if not CAPTION.match(head):
+                continue
+            first = textpage.get_charbox(index)
+            line = re.split(r"[\r\n]", head, maxsplit=1)[0]
+            captions.append((first[3], first[0], line.strip()[:160]))
+    graphics = []
+    for obj in page.get_objects(filter=[raw.FPDF_PAGEOBJ_IMAGE, raw.FPDF_PAGEOBJ_PATH,
+                                        raw.FPDF_PAGEOBJ_SHADING, raw.FPDF_PAGEOBJ_FORM], max_depth=0):
+        left, bottom, right, top = obj.get_bounds()
+        if bottom >= height - EDGE_BAND or top <= EDGE_BAND:
+            continue  # header or footer rule
+        if right - left > width * 0.9 and top - bottom < 3:
+            continue  # a full-width rule
+        graphics.append((left, bottom, right, top))
+    spans = []
+    for caption_top, caption_left, caption in captions:
+        # The figure's column, from what is drawn just above the caption: a
+        # figure across the middle of the page is full width; otherwise it
+        # sits in the caption's half (two-column pages).
+        near = [g for g in graphics if caption_top - 2 <= g[1] <= caption_top + 60]
+        middle = width / 2
+        if near and min(g[0] for g in near) < middle - 20 and max(g[2] for g in near) > middle + 20:
+            span = (0.0, width)
+        elif (min(g[0] for g in near) if near else caption_left) < middle - 20:
+            span = (0.0, middle)
+        else:
+            span = (middle, width)
+        spans.append((caption_top, span, caption))
+    captions = spans
+    figures = []
+    for caption_top, span, caption in captions:
+        # Below the nearest caption above it in the same column (or the header).
+        above = [c[0] for c in captions if c[0] > caption_top + 2 and c[1][0] < span[1] and span[0] < c[1][1]]
+        ceiling = min(above) - 12 if above else height - EDGE_BAND
+        inside = [g for g in graphics
+                  if g[1] >= caption_top - 2 and g[3] <= ceiling + 2
+                  and span[0] - 6 <= (g[0] + g[2]) / 2 <= span[1] + 6]
+        if inside:
+            box = (min(g[0] for g in inside), min(g[1] for g in inside),
+                   max(g[2] for g in inside), max(g[3] for g in inside))
+            if min(box[2] - box[0], box[3] - box[1]) >= MIN_FIGURE_INCHES * 72:
+                figures.append((box, caption))
+    figures.sort(key=lambda f: (f[0][0] >= width / 2, -f[0][3]))
+    if figures:
+        return figures
+    boxes = sorted(raster_boxes(page, raw), key=lambda b: (-b[3], b[0]))
     kept: list[tuple[float, float, float, float]] = []
     for box in boxes:
         if not any(box[0] >= k[0] - 1 and box[1] >= k[1] - 1 and box[2] <= k[2] + 1 and box[3] <= k[3] + 1
                    for k in kept):
             kept.append(box)
-    return kept
+    return [(box, "") for box in kept]
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -138,8 +215,11 @@ def main(argv: list[str] | None = None) -> int:
     for index in range(len(pdf)):
         page = pdf[index]
         number = f"{index + 1:02d}" if len(pdf) < 100 else f"{index + 1:03d}"
-        boxes = figure_boxes(page, raw)
+        textpage = page.get_textpage()
+        found = figure_boxes(page, raw, textpage)
+        boxes = [box for box, _ in found]
         pages.append({"page": page, "number": number, "text": page_text(page), "boxes": boxes,
+                      "captions": [caption for _, caption in found],
                       "page_image": images_dir / f"{stem}_p{number}.png",
                       "figures": [images_dir / f"{stem}_p{number}-fig{k + 1}.png" for k in range(len(boxes))]})
 
@@ -184,13 +264,17 @@ def main(argv: list[str] | None = None) -> int:
         if p["boxes"]:
             scale = FIGURE_DPI / 72
             image = page.render(scale=scale).to_pil()
-            for box, path in zip(p["boxes"], p["figures"]):
+            for box, path, caption in zip(p["boxes"], p["figures"], p["captions"]):
                 left, bottom, right, top = (box[0] - MARGIN_PT, box[1] - MARGIN_PT,
                                             box[2] + MARGIN_PT, box[3] + MARGIN_PT)
                 crop = (max(0, int(left * scale)), max(0, int((height_pt - top) * scale)),
                         min(image.width, int(right * scale) + 1), min(image.height, int((height_pt - bottom) * scale) + 1))
                 image.crop(crop).save(path)
                 out += [f"![[{vault_link(path, vault)}]]", ""]
+                if caption:
+                    # The caption's first line again, right under its figure,
+                    # so the figure can be matched to its number.
+                    out += [caption.replace("[", "\\[").replace("]", "\\]"), ""]
                 figures += 1
         page.render(scale=PAGE_DPI / 72).to_pil().save(p["page_image"])
         out += [f"![[{vault_link(p['page_image'], vault)}]]", ""]
