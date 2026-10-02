@@ -71,6 +71,11 @@ Find your role before anything else:
    using the template in `references/writing-review.md` ("Task for the other
    agent"), with absolute paths, save it as `RUN/tasks/<role>.md`, and launch
    it with `--embed-task --task-file`. Do not start more than this one agent.
+   Starting this one agent is part of what the user asked for; it needs no
+   separate confirmation (the `delegate` skill's risk check is satisfied by
+   the request for a note). A reviewer that reads its files and then waits for
+   the first draft has started normally, even if the launcher warns that its
+   first turn ended without a report.
    **If it does not start, stop**: report the exact failure, publish nothing
    as `checked`, and never take both roles yourself.
 5. Do your own role below (writer or reviewer) with the other agent's
@@ -84,7 +89,10 @@ Find your role before anything else:
 
 ## Writer
 
-Read `references/writing-review.md` first. "Open" an image below means look
+Read `references/writing-review.md` first. If the vault has its own rules for
+notes (its `CLAUDE.md` or `AGENTS.md`: tags, headings, wording), follow them
+where the template is silent or differs, and keep every front matter key of
+the template. "Open" an image below means look
 at it yourself: Claude with its file-reading tool, Codex with its image tool.
 Then:
 
@@ -116,7 +124,8 @@ Then:
    Start with `review_status: needs-review`.
    Fill who made the note: `writer` and `reviewer` (registered names),
    `writer_program` and `reviewer_program` (`claude` or `codex`),
-   `writer_model` and `reviewer_model` if known (the reviewer's from `whois`),
+   `writer_model` and `reviewer_model` if known (the formal ID: `model_raw`
+   from `whois`, e.g. `claude-opus-5-5`),
    and `review_pairing` as step 3 of the coordinator chose (your task says it
    if you are not the coordinator). The "Review pairing" line in the last
    section is one of these, as is:
@@ -137,7 +146,11 @@ Then:
    `approved` → `checked`; findings still open after one fix round →
    `needs-review` (list them in the note); reviewer could not verify →
    `blocked`. Then `python3 SKILL_DIR/scripts/bundle.py publish RUN` and report
-   the printed path.
+   the printed path. If publish stops because a note of **this same paper**
+   (same source, same `-<sha8>` folder) is already in the output folder, it is
+   a second note of one paper: publish it with `--revision`, which saves it
+   beside the first as `…-r2` (folder and note name), and tell the user. Never
+   remove or overwrite the existing note.
 
 ## Reviewer
 

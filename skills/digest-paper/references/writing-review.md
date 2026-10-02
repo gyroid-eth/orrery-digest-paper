@@ -96,6 +96,7 @@ both". Do not spawn any agent. Do not use any other skill of the same name.
 - Counterpart (Mail): <registered name of the coordinator>
 - Parent (cc): <the coordinator's own parent, or "none">
 - Note language: <ja | en>
-- The first draft digest will arrive by Mail from the writer.   # for a reviewer
+- The first draft digest will arrive by Mail from the writer. After reading
+  SKILL.md and this file, end your turn and wait for it; that is normal.   # for a reviewer
 - Report completion to <coordinator name> with send_message at importance high.
 ```
